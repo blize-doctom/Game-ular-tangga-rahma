@@ -90,7 +90,7 @@
         </button>
         <!-- Server Sync connection badge -->
         <div id="conn-badge" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-black uppercase text-slate-400">
-          <span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span> Offline
+          <span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span> Belum Terhubung
         </div>
       </div>
     </div>
@@ -1070,9 +1070,16 @@
       const badge = document.getElementById('conn-badge');
       badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Menyambung...`;
 
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // Fallback url for tests
-      const wsUrl = `${wsProtocol}//${window.location.host}`;
+      let wsUrl = '';
+      const isLocalHostOrRunApp = window.location.host.includes('localhost') || window.location.host.includes('run.app');
+      
+      if (isLocalHostOrRunApp) {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${wsProtocol}//${window.location.host}`;
+      } else {
+        // Fallback to the live Cloud Run backend URL for standalone pages / Github Pages
+        wsUrl = 'wss://ais-pre-m4a2mwzht7cviuapcpkjt4-963306589935.asia-southeast1.run.app';
+      }
       
       try {
         ws = new WebSocket(wsUrl);
