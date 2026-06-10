@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ular Tangga BK - Bimbingan & Konseling Interaktif</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN via unpkg -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .heading-font {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', sans-serif;
+    }
+    /* Snake / Ladder visual connection lines */
+    .board-line {
+      pointer-events: none;
+      stroke-linecap: round;
+      stroke-dasharray: 6 4;
+      animation: dash 10s linear infinite;
+    }
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -100;
+      }
+    }
+    /* Smooth transitions */
+    .transition-all-300 {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* Dice animation state */
+    @keyframes spinDice {
+      0% { transform: rotate(0deg) scale(1); }
+      30% { transform: rotate(180deg) scale(1.15); }
+      70% { transform: rotate(360deg) scale(0.9); }
+      100% { transform: rotate(720deg) scale(1); }
+    }
+    .dice-rolling {
+      animation: spinDice 0.8s ease-out;
+    }
+    /* Scrollbar style */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(30, 41, 59, 0.2);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(30, 41, 59, 0.4);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+
+  <!-- Header Section -->
+  <header class="bg-indigo-900 text-white py-4 px-6 shadow-md border-b-4 border-yellow-400">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-yellow-400 text-indigo-950 p-2.5 rounded-2xl font-black text-2xl shadow-md rotate-[-3deg]">
+          🎲
+        </div>
+        <div>
+          <h1 class="heading-font font-extrabold text-xl sm:text-2xl tracking-tight uppercase flex items-center gap-1.5">
+            Ular Tangga BK <span class="bg-indigo-650 text-[10px] lowercase px-2.5 py-0.5 rounded-full font-sans tracking-wide text-indigo-200 border border-indigo-500">edisi publik</span>
+          </h1>
+          <p class="text-[11px] text-indigo-200 font-medium">Bimbingan & Konseling Interaktif: Pembentukan Karakter Positif Siswa</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Sound control -->
+        <button id="btn-toggle-sound" onclick="toggleSound()" class="p-2.5 rounded-xl bg-indigo-800 border border-indigo-700 hover:bg-indigo-750 transition-all flex items-center gap-2 text-xs font-bold shadow-inner cursor-pointer select-none">
+          <i data-lucide="volume-2" class="w-4 h-4 text-yellow-400"></i>
+          <span>Suara Aktif</span>
+        </button>
+        <!-- Server Sync connection badge -->
+        <div id="conn-badge" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-black uppercase text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span> Offline
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mode Switcher Menu -->
+  <div id="mode-selector-banner" class="bg-indigo-950/5 border-b border-indigo-900/10 py-3 px-6 text-center">
+    <div class="max-w-2xl mx-auto flex items-center justify-center p-1 bg-slate-200 rounded-xl gap-1">
+      <button onclick="setPlayMode('local')" id="btn-mode-local" class="flex-1 py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer bg-white text-indigo-950 shadow-sm">
+        Mode Mandiri (Satu Layar)
+      </button>
+      <button onclick="setPlayMode('online')" id="btn-mode-online" class="flex-1 py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer text-slate-600 hover:text-slate-900">
+        Mode Bersama (Online Multiplayer)
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- LEFT PANEL (Lobby, Setup, or Gameplay Grid) -->
+    <div class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- LOBBY & SETUP PANEL (LOCAL MODE) -->
+      <div id="setup-panel-local" class="bg-white border-8 border-indigo-950 rounded-3xl p-6 shadow-xl space-y-6">
+        <div class="border-b pb-4">
+          <h2 class="heading-font font-black text-2xl text-indigo-900 uppercase">1. Pilih Paket Tema BK</h2>
+          <p class="text-xs text-slate-500 font-bold">Pilih fokus materi pelajaran bimbingan konseling untuk tantangan petualangan.</p>
+        </div>
+
+        <!-- Themes Selector Grid -->
+        <div class="grid sm:grid-cols-2 gap-4" id="theme-grid-local">
+          <!-- Dynamically populated via JS -->
+        </div>
+
+        <div class="border-b pb-4 pt-2">
+          <h2 class="heading-font font-black text-2xl text-indigo-900 uppercase">2. Tambahkan Siswa & Karakter</h2>
+          <p class="text-xs text-slate-500 font-bold">Dapat dimainkan oleh 1 hingga 4 siswa secara mandiri ataupun bot asisten.</p>
+        </div>
+
+        <!-- Players List Config -->
+        <div class="grid sm:grid-cols-2 gap-4" id="config-players-list-local">
+          <!-- Dynamically populated via JS -->
+        </div>
+
+        <div class="flex gap-4 items-center pt-2">
+          <button onclick="addPlayerLocal()" class="px-4 py-2 border-2 border-dashed border-indigo-305 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-50 transition-all cursor-pointer">
+            + Tambah Siswa
+          </button>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100">
+          <button onclick="startGameLocal()" class="w-full py-4.5 bg-orange-500 hover:bg-orange-600 active:translate-y-0.5 transition-all text-white font-black text-lg rounded-2xl shadow-[0_6px_0_rgb(194,65,12)] tracking-wider uppercase cursor-pointer">
+            MULAI PETUALANGAN KARAKTER
+          </button>
+        </div>
+      </div>
+
+      <!-- LOBBY & SETUP PANEL (ONLINE MULTIPLAYER MODE - HIDDEN BY DEFAULT) -->
+      <div id="setup-panel-online" class="hidden bg-white border-8 border-indigo-950 rounded-3xl p-6 shadow-xl space-y-6">
+        <div class="border-b pb-4">
+          <h2 class="heading-font font-black text-2xl text-indigo-900 uppercase">Hubungkan Sesi Multiplayer</h2>
+          <p class="text-xs text-slate-500 font-bold">Bermain bersama murid-murid lain di kelas menggunakan koneksi server real-time.</p>
+        </div>
+
+        <!-- Personal Configuration fields -->
+        <div class="bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl space-y-4">
+          <h3 class="font-bold text-xs text-indigo-950 uppercase tracking-widest">Identitas Bermain Anda:</h3>
+          
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Nama Lengkap Siswa</label>
+              <input type="text" id="online-my-name" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800" placeholder="Ketik nama Anda...">
+            </div>
+            <div>
+              <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Jenis Kelamin (Gender)</label>
+              <select id="online-my-gender" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800">
+                <option value="male">Laki-laki (Siswa)</option>
+                <option value="female">Perempuan (Siswi)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4 items-center">
+            <div>
+              <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Gaya Warna Token</label>
+              <div id="online-color-swatches" class="flex gap-2">
+                <!-- Built via JS -->
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Avatar Emoji</label>
+              <div id="online-avatar-swatches" class="flex gap-2">
+                <!-- Built via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Box Grid -->
+        <div class="grid sm:grid-cols-2 gap-6 pt-2">
+          <!-- Create Room Frame -->
+          <div class="border-2 border-dashed border-slate-200 p-5 rounded-2xl flex flex-col justify-between space-y-4">
+            <div class="space-y-1.5">
+              <h4 class="font-extrabold text-sm text-indigo-950 uppercase">Host Sesi (Buat Ruangan)</h4>
+              <p class="text-xs text-slate-500 leading-relaxed font-semibold">Buat ruangan baru, pilih tema, dan persilakan murid lain memasukkan kode ruangan Anda.</p>
+            </div>
+            
+            <div class="space-y-3">
+              <label class="block text-[10px] font-black text-indigo-950 uppercase">Pilih Paket Tema Untuk Room:</label>
+              <select id="online-theme-selector" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800">
+                <!-- populated dynamically -->
+              </select>
+              <button onclick="createOnlineRoom()" class="w-full py-3 bg-indigo-900 border-2 border-indigo-950 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow cursor-pointer">
+                Buat Ruangan Baru (& get code)
+              </button>
+            </div>
+          </div>
+
+          <!-- Join Room Frame -->
+          <div class="border-2 border-dashed border-slate-200 p-5 rounded-2xl flex flex-col justify-between space-y-4">
+            <div class="space-y-1.5">
+              <h4 class="font-extrabold text-sm text-indigo-950 uppercase">Gabung Sesi Orang Lain</h4>
+              <p class="text-xs text-slate-500 leading-relaxed font-semibold">Tanyakan kode akses ruangan 4-digit yang dibuat oleh Guru BK atau murid lainnya.</p>
+            </div>
+
+            <div class="space-y-3">
+              <input type="text" id="online-room-code-input" maxlength="4" class="w-full text-center tracking-widest font-black text-xl bg-slate-50 border-2 border-slate-200 rounded-xl py-2" placeholder="0000">
+              <button onclick="joinOnlineRoom()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow cursor-pointer">
+                Gabung Sesi Permainan
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOBBY SCREEN (Waiting for players) -->
+        <div id="online-lobby-panel" class="hidden bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+          <div class="flex flex-col sm:flex-row items-center justify-between border-b pb-3 gap-2">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Akses Ruangan Bermain</span>
+              <h3 class="heading-font font-black text-2xl text-slate-900">KODE ROOM: <span id="lobby-code-display" class="text-indigo-600 bg-white px-3 py-1 rounded-xl border font-mono">----</span></h3>
+            </div>
+            <div class="text-right">
+              <span class="text-xs bg-indigo-200 text-indigo-900 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block" id="lobby-theme-display-pill">Tema BK</span>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <h4 class="text-xs font-black text-slate-400 uppercase tracking-wider">Murid Yang Sudah Terhubung (<span id="lobby-count">0</span>/4):</h4>
+            <div id="lobby-players-grid" class="grid sm:grid-cols-2 gap-3">
+              <!-- Grid players -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200" id="lobby-host-controls">
+            <!-- Starting button shown only for host -->
+            <button onclick="startOnlineGame()" class="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black text-sm uppercase rounded-xl tracking-wider shadow cursor-pointer">
+              MEMULAI PETUALANGAN MULTIPLAYER (HOST)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOARD DISPLAY PANEL (ACTIVE GAME) -->
+      <div id="board-panel" class="hidden space-y-6">
+        
+        <!-- Gameboard Frame Canvas -->
+        <div class="bg-white border-[12px] border-indigo-950 rounded-[2.5rem] p-4 lg:p-6 shadow-2xl relative">
+          
+          <!-- Active Player Indicator Banner -->
+          <div class="flex items-center justify-between gap-3 bg-indigo-50 p-3 rounded-2xl border border-indigo-100 mb-4 shadow-sm">
+            <div class="flex items-center gap-3">
+              <div id="active-turn-avatar" class="w-11 h-11 text-2xl rounded-xl bg-white border-2 flex items-center justify-center shadow-sm">👦</div>
+              <div>
+                <span class="text-[9px] font-black uppercase text-indigo-600 tracking-wider">Giliran Berjalan</span>
+                <h3 id="active-turn-name" class="heading-font font-black text-base text-indigo-950 uppercase">Rian</h3>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[9px] font-black uppercase text-slate-400 block tracking-wider">Metode Kontrol</span>
+              <span id="active-turn-control" class="text-xs font-black text-emerald-600 block uppercase">Manual Perangkat</span>
+            </div>
+          </div>
+
+          <!-- Board Canvas Container -->
+          <div class="relative aspect-square w-full rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-inner">
+            <!-- Grid layer -->
+            <div id="board-grid" class="grid grid-cols-5 grid-rows-5 h-full w-full">
+              <!-- Grid boxes populated dynamically via JS (squares 1 to 25) -->
+            </div>
+            <!-- Lines layer for Snakes/Ladders -->
+            <svg id="board-lines-overlay" class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              <!-- SVGs links populated dynamically via JS -->
+            </svg>
+          </div>
+
+          <!-- Footnote Info -->
+          <div class="flex flex-wrap items-center justify-between gap-2 mt-4 text-[10px] font-bold text-slate-400">
+            <span>🏁 Target Keberhasilan: Petak 25 &bull; Mulai: Petak 1</span>
+            <span class="flex items-center gap-3 font-extrabold uppercase">
+              <span class="flex items-center gap-1 text-emerald-600"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Tangga Kebaikan</span>
+              <span class="flex items-center gap-1 text-red-650"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Ular Perbaikan</span>
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL (Scores, Dice, and logs) -->
+    <div class="lg:col-span-4 space-y-6">
+      
+      <!-- SCOREBOARD CARD (Always visible once playing) -->
+      <div id="scoreboard-sidebar" class="bg-white border-4 border-slate-200 rounded-2xl p-5 shadow-md space-y-4">
+        <h3 class="heading-font font-extrabold text-xs text-indigo-950 uppercase tracking-wider flex items-center gap-2">
+          📊 Skor Profil Karakter Siswa 
+        </h3>
+        <div class="space-y-3" id="scores-container">
+          <div class="text-xs text-center text-slate-400 font-bold py-4">Mulai permainan untuk melacak skor karakter.</div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE DICE ROLLER (Hidden Initially) -->
+      <div id="dice-sidebar" class="hidden bg-white border-4 border-yellow-400 rounded-3xl p-5 shadow-xl space-y-4">
+        <div class="text-center pb-2 border-b">
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kocok Dadu Karakter</span>
+          <p class="text-xs text-slate-500 font-bold mt-0.5">Maju sesuai angka dadu untuk mendarat di petak BK</p>
+        </div>
+
+        <div class="flex flex-col items-center justify-center py-4 space-y-4" id="rolling-ui-area">
+          <!-- Animated Dice Box -->
+          <div id="dice-element" class="w-20 h-20 bg-indigo-900 text-white rounded-2xl border-4 border-yellow-400 text-4xl font-extrabold flex items-center justify-center cursor-pointer shadow-lg active:scale-95 transition-transform" onclick="rollDice()">
+            🎲
+          </div>
+          
+          <button id="btn-roll" onclick="rollDice()" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase rounded-xl tracking-wider shadow duration-150 cursor-pointer">
+            KOCOK DADU SEKARANG
+          </button>
+        </div>
+      </div>
+
+      <!-- SYSTEM LOGS & JOURNAL -->
+      <div class="bg-indigo-950 text-indigo-200 border-4 border-indigo-900 rounded-2xl p-5 shadow-lg space-y-3">
+        <h2 class="heading-font font-extrabold text-xs text-indigo-300 uppercase tracking-widest flex items-center justify-between">
+          <span>📝 Jurnal & Log Aktivitas</span>
+          <button onclick="clearLogs()" class="opacity-60 hover:opacity-100 text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 border border-indigo-800 rounded cursor-pointer">Bersihkan</button>
+        </h2>
+        <div id="logs-box" class="h-40 overflow-y-auto text-[11px] font-medium leading-relaxed space-y-2 pr-1 mono-font">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- SPECIAL ACTION TRIGGERS -->
+      <div class="space-y-3">
+        <button id="btn-restart-game" onclick="confirmReset()" class="hidden w-full py-3 border-2 border-red-200 hover:bg-red-50 text-red-650 font-black text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+          Hentikan Sesi & Kembali
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- POPUP DIALOGS / INTERACTIVE REFLECTION MODAL (Overlay) -->
+  <div id="modal-backdrop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
+    <div class="bg-white border-[12px] border-indigo-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative transform scale-95 transition-all duration-300 space-y-5" id="modal-container">
+      
+      <!-- Modal Category Header badge -->
+      <div class="flex items-center justify-between border-b pb-3">
+        <div class="flex items-center gap-2">
+          <span id="modal-badge-emoji" class="text-2xl">🌱</span>
+          <div>
+            <span id="modal-category" class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-slate-100 tracking-wider">Kategori</span>
+            <h4 id="modal-player-turn" class="heading-font font-black text-sm text-indigo-950 uppercase mt-1">Darat di Petak</h4>
+          </div>
+        </div>
+        <span id="modal-points" class="text-xs bg-yellow-400 text-indigo-950 font-black px-2.5 py-1 rounded-lg">+10 Poin</span>
+      </div>
+
+      <!-- Modal Question text body -->
+      <div class="space-y-2 py-2">
+        <h3 id="modal-question-text" class="heading-font font-black text-base sm:text-lg text-indigo-950 leading-snug">
+          Pertanyaan reflektif sedang dimuat...
+        </h3>
+        <p id="modal-subtext" class="text-xs text-slate-500 font-bold leading-relaxed">
+          Tantangan refleksional pembelajaran bimbingan konseling.
+        </p>
+      </div>
+
+      <!-- Input screen: choices or short answer text -->
+      <div id="modal-inputs-area" class="space-y-3">
+        <!-- Built by JS dynamically depending on question type -->
+      </div>
+
+      <!-- Feedback Screen (Initially hidden, shown inside modal after answer) -->
+      <div id="modal-feedback-area" class="hidden bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 text-xs font-medium space-y-3 shadow-inner">
+        <div class="flex items-center gap-2 text-emerald-900 font-black uppercase text-[10px]">
+          <span>🤖 Ulasan Konselor BK:</span>
+        </div>
+        <p id="modal-feedback-text" class="text-slate-705 font-medium leading-relaxed text-slate-700">
+          Ulasan bimbingan konseling dimuat...
+        </p>
+      </div>
+
+      <!-- Action triggers inside Modal -->
+      <div class="pt-2">
+        <!-- Submit Button -->
+        <button id="btn-modal-submit" onclick="submitModalReflection()" class="w-full py-3.5 px-4 bg-indigo-950 hover:bg-slate-900 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer">
+          Kirim Tanggapan ke Guru BK
+        </button>
+        <!-- Next Turn Button (shown in feedback screen) -->
+        <button id="btn-modal-next" onclick="closeModalNextTurn()" class="hidden w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer">
+          Selesai & Lanjutkan Sesi
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- WINNER RESOLUTION MODAL -->
+  <div id="winner-backdrop" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden z-50 items-center justify-center p-4">
+    <div class="bg-white border-[16px] border-yellow-400 rounded-3xl max-w-2xl w-full p-8 shadow-2xl relative text-center space-y-6">
+      
+      <div class="space-y-2">
+        <span class="text-6xl animate-bounce inline-block">🏆</span>
+        <h2 class="heading-font font-black text-3xl text-indigo-900 uppercase">PETUALANGAN SELESAI!</h2>
+        <p class="text-xs text-slate-500 font-bold">Karakter Siswa berhasil mencapai target kelulusan di Petak 25!</p>
+      </div>
+
+      <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl max-w-md mx-auto space-y-3">
+        <h3 id="winner-congratulations" class="heading-font font-extrabold text-lg text-indigo-950">Selamat Kepada Pemenang!</h3>
+        <p class="text-xs text-indigo-900 font-medium leading-relaxed">
+          Anda telah melatih kecerdasan karakter di bidang Pribadi, Sosial, Belajar, dan Karir secara luar biasa.
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <h4 class="font-extrabold text-xs text-slate-400 uppercase tracking-widest">&mdash; Rekomendasi Profil Karakter &mdash;</h4>
+        <div id="winner-radar-stats" class="text-xs text-slate-700 bg-slate-50 border p-4 rounded-xl text-left space-y-2 leading-relaxed">
+          <!-- Compiled results -->
+        </div>
+      </div>
+
+      <!-- Report PDF Downloader -->
+      <div class="p-5 bg-yellow-50 border border-yellow-200 rounded-2xl max-w-md mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="text-left space-y-1">
+          <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">Cetak Dokumen Portofolio BK</h4>
+          <p class="text-[10px] text-slate-500 font-medium leading-relaxed">Unduh Jurnal Refleksi Mandiri dan Skor Anda dalam file PDF untuk ditunjukkan pada Orang Tua & Wali Kelas.</p>
+        </div>
+        <button onclick="downloadReportPDF()" class="bg-indigo-900 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl hover:bg-black transition-all cursor-pointer shadow flex items-center gap-1.5 shrink-0">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-yellow-400"></i> Unduh PDF
+        </button>
+      </div>
+
+      <div class="pt-4 flex gap-3 flex-col sm:flex-row max-w-md mx-auto">
+        <button onclick="restartSetup()" class="w-full py-3.5 bg-indigo-950 hover:bg-slate-900 text-white font-black text-xs uppercase rounded-xl tracking-wider shadow cursor-pointer">
+          Kembali ke Menu Awal
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer Section -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-6 text-center text-[11px] font-bold text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span>&copy; 2026 Ular Tangga Bimbingan Konseling Sekolah Mandiri & Multiplayer.</span>
+      <span class="text-indigo-600">Dikembangkan untuk Edukasi Pembentukan Karakter Siswa</span>
+    </div>
+  </footer>
+
+  <!-- Retro SFX Audio Synthesizer Engine -->
+  <script>
+    let isSoundMuted = false;
+    
+    // Synth audio players
+    function playSound(type) {
+      if (isSoundMuted) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        const now = ctx.currentTime;
+        
+        if (type === 'roll') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554, now + 0.1);
+          osc.frequency.setValueAtTime(659, now + 0.2);
+          osc.frequency.setValueAtTime(880, now + 0.3);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'snake') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.linearRampToValueAtTime(100, now + 0.5);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        } else if (type === 'ladder') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(900, now + 0.4);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        }
+      } catch (err) {
+        console.warn("Audio Context blocked or failed:", err);
+      }
+    }
+
+    function toggleSound() {
+      isSoundMuted = !isSoundMuted;
+      const btn = document.getElementById('btn-toggle-sound');
+      if (isSoundMuted) {
+        btn.innerHTML = `<i data-lucide="volume-x" class="w-4 h-4 text-slate-400"></i><span>Mute</span>`;
+        btn.className = "p-2.5 rounded-xl bg-indigo-950 border border-indigo-900 hover:bg-slate-900 transition-all flex items-center gap-2 text-xs font-bold shadow-inner cursor-pointer select-none";
+      } else {
+        btn.innerHTML = `<i data-lucide="volume-2" class="w-4 h-4 text-yellow-400"></i><span>Suara Aktif</span>`;
+        btn.className = "p-2.5 rounded-xl bg-indigo-800 border border-indigo-700 hover:bg-indigo-750 transition-all flex items-center gap-2 text-xs font-bold shadow-inner cursor-pointer select-none";
+      }
+      lucide.createIcons();
+      playSound('click');
+    }
+  </script>
+
+  <!-- Core Board Data & Scripting modules -->
+  <script>
+    // PREBUILT THEMES DATA
+    const SYSTEMS_THEMES_DATA = [
+      {
+        id: 'bk-harmoni',
+        name: 'BK Harmoni Karakter',
+        desc: 'Gabungan seimbang materi Pribadi, Sosial, Belajar, dan Karir untuk bimbingan konseling utuh.',
+        emoji: '✨',
+        gradient: 'from-emerald-500 to-teal-600',
+        color: 'emerald'
+      },
+      {
+        id: 'anti-bullying',
+        name: 'Persahabatan & Anti-Bullying',
+        desc: 'Fokus memperkuat empati, sopan santun, memelihara persahabatan, dan mencegah perundungan kelas.',
+        emoji: '🤝',
+        gradient: 'from-indigo-500 to-purple-600',
+        color: 'indigo'
+      },
+      {
+        id: 'motivasi-belajar',
+        name: 'Disiplin & Motivasi Belajar',
+        desc: 'Fokus pada manajemen waktu, cara mengatasi malas, teknik belajar, dan impian prestasi.',
+        emoji: '📚',
+        gradient: 'from-amber-500 to-orange-600',
+        color: 'amber'
+      },
+      {
+        id: 'eksplorasi-karir',
+        name: 'Eksplorasi Karir & Cita-Cita',
+        desc: 'Mengenal bakat, minat diri, hobi bermanfaat, serta bermacam profesi masa depan bimbingan.',
+        emoji: '🚀',
+        gradient: 'from-rose-500 to-pink-600',
+        color: 'rose'
+      }
+    ];
+
+    const PREBUILT_AVATARS = ['👦', '👧', '🧑', '👩', '🤖'];
+    const PREBUILT_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'];
+
+    // SNAKES & LADDERS (Petak 1 sampai 25)
+    const LADDERS_MAP = {
+      3: 11,
+      10: 18,
+      15: 22
+    };
+
+    const SNAKES_MAP = {
+      24: 12,
+      17: 6
+    };
+
+    // Calculate grid coordinates for drawing paths
+    const COORDINATES = {};
+    function buildCoordinatesGrid() {
+      for (let petak = 1; petak <= 25; petak++) {
+        let zeroBasedPetak = petak - 1;
+        let rowIdx = 4 - Math.floor(zeroBasedPetak / 5);
+        let colIdx = zeroBasedPetak % 5;
+        // Zig-Zag rows logic: Even rows relative from bottom go Left->Right, Odd go Right->Left
+        let rowRelativeFromBottom = Math.floor(zeroBasedPetak / 5);
+        if (rowRelativeFromBottom % 2 === 1) {
+          colIdx = 4 - colIdx;
+        }
+        COORDINATES[petak] = { row: rowIdx, col: colIdx };
+      }
+    }
+    buildCoordinatesGrid();
+
+    // 20 rich offline questions pool across categories
+    const REFL_QUESTIONS_POOL = {
+      'Pribadi': [
+        {
+          id: 'p1',
+          category: 'Pribadi',
+          text: 'Bagaimana caramu mengendalikan amarah saat keinginan atau rencanamu tidak tercapai?',
+          subtext: 'Kendali emosi melambangkan kematangan emosional seorang pelajar Pancasila.',
+          emoji: '🧘',
+          points: 15,
+          type: 'choice',
+          options: [
+            'Menarik napas dalam-dalam, diam sebentar, dan minum air putih hangat',
+            'Bercerita ke sahabat baik atau menulis di buku catatan harian',
+            'Berolahraga atau mendengarkan instrumen musik yang menenangkan',
+            'Lainnya (Saya memiliki metode khusus yang personal)'
+          ]
+        },
+        {
+          id: 'p2',
+          category: 'Pribadi',
+          text: 'Sebutkan satu kelebihan unik dari dirimu yang paling kamu hargai dan banggakan!',
+          subtext: 'Mengenali kelebihan pribadi mendorong tumbuhnya konsep diri yang asertif.',
+          emoji: '⭐️',
+          points: 10,
+          type: 'short_answer'
+        },
+        {
+          id: 'p3',
+          category: 'Pribadi',
+          text: 'Jika kamu ketahuan terlambat masuk kelas, bagaimana cara terbaikmu menyikapi hal tersebut?',
+          subtext: 'Tanggung jawab mengakui kesalahan membentuk kematangan kepatuhan.',
+          emoji: '⏳',
+          points: 15,
+          type: 'choice',
+          options: [
+            'Mengetuk pintu kelas dengan tenang, meminta maaf secara jantan, dan berjanji tidur lebih awal',
+            'Berlari terburu-buru mencari alasan fiktif agar terhindar dari hukum guru',
+            'Diam terpaku di depan pintu kelas karena takut dihukum di depan khalayak'
+          ]
+        },
+        {
+          id: 'p4',
+          category: 'Pribadi',
+          text: 'Apa kegiatan menenangkan batin atau hobi yang biasanya kamu lakukan saat merasa tertekan oleh materi pelajaran?',
+          subtext: 'Kesehatan mental sangat terbantu dengan adanya katarsis emosi yang menyehatkan.',
+          emoji: '🎨',
+          points: 10,
+          type: 'short_answer'
+        }
+      ],
+      'Sosial': [
+        {
+          id: 's1',
+          category: 'Sosial',
+          text: 'Jika teman dekatmu mendadak sendirian murung di pojok kantin, apa tindakan kepedulian yang akan kamu buat?',
+          subtext: 'Rasa empati antar kawan merupakan tameng ampuh pencegah tindakan perundungan.',
+          emoji: '🤝',
+          points: 15,
+          type: 'choice',
+          options: [
+            'Menghampirinya secara perlahan, duduk bersama, dan bertanya tentang kabarnya hari ini',
+            'Membiarkannya menyendiri karena takut dianggap terlalu ikut campur masalah pribadinya',
+            'Mengajaknya bergurau beramai-ramai agar dia terpaksa melupakan kesedihannya'
+          ]
+        },
+        {
+          id: 's2',
+          category: 'Sosial',
+          text: 'Bagaimana caramu berteman dan menanggapi kawan kelas yang memiliki budaya atau bahasa daerah yang berbeda?',
+          subtext: 'Keberagaman adalah anugerah persaudaraan di lingkungan sekolah modern.',
+          emoji: '🌍',
+          points: 15,
+          type: 'short_answer'
+        },
+        {
+          id: 's3',
+          category: 'Sosial',
+          text: 'Saat kamu melihat ada kabar bohong (hoaks) tentang temanmu disebarkan di grup chat, tindakan bijakmu adalah?',
+          subtext: 'Sopan santun berjejaring sosial melambangkan integritas kepemimpinan anak muda.',
+          emoji: '🛡️',
+          points: 20,
+          type: 'choice',
+          options: [
+            'Menghubungi pembuat isu secara japri, menegurnya dengan sopan, dan meminta menghapus pesan hoaks tersebut',
+            'Ikut meramaikan grup chat demi kehangatan suasana bercanda bersama kawan kelas',
+            'Mendiamkannya begitu saja karena merasa bukan urusan pribadi yang merugikanku'
+          ]
+        },
+        {
+          id: 's4',
+          category: 'Sosial',
+          text: 'Tuliskan satu ucapan terima kasih tulus yang ingin kamu sampaikan kepada sahabat terdekatmu saat ini!',
+          subtext: 'Membiasakan budaya apresiasi memupuk kehangatan persahabatan jangka panjang.',
+          emoji: '🌸',
+          points: 10,
+          type: 'short_answer'
+        }
+      ],
+      'Belajar': [
+        {
+          id: 'b1',
+          category: 'Belajar',
+          text: 'Ketika merasa bosan atau jenuh luar biasa di tengah penjelasan kelas, apa tindakan cerdasmu untuk bertahan?',
+          subtext: 'Strategi belajar asertif membantu penyerapan materi secara berkesinambungan.',
+          emoji: '📚',
+          points: 15,
+          type: 'choice',
+          options: [
+            'Mencoba mengevaluasi penjelasan guru lewat corat-coret mind-map kreatif di buku',
+            'Mencuci wajah ke toilet sekolah setelah berpamitan asertif dengan guru pengajar',
+            'Mengajjak teman sebangku bercengkerama santai demi mengusir penat berlebih'
+          ]
+        },
+        {
+          id: 'b2',
+          category: 'Belajar',
+          text: 'Sebutkan cara atau tips belajar favoritmu yang paling ampuh saat mempersiapkan ulangan harian!',
+          subtext: 'Setiap anak memiliki modalitas belajar tersendiri (visual, auditori, atau kinestetik).',
+          emoji: '🧠',
+          points: 15,
+          type: 'short_answer'
+        },
+        {
+          id: 'b3',
+          category: 'Belajar',
+          text: 'Bagaimana caramu mengatur waktu antara belajar mempersiapkan tugas sekolah dan bermain smartphone?',
+          subtext: 'Manajemen waktu yang tegas menghindari penundaan (prokrastinasi akademis).',
+          emoji: '🎯',
+          points: 20,
+          type: 'choice',
+          options: [
+            'Memakai aplikasi pengingat waktu (Timer) Pomodoro untuk membatasi durasi main HP',
+            'Bermain sepuas hati setelah itu baru belajar seadanya saat larut malam',
+            'Menyerahkan HP secara penuh pada orang tua untuk dipegang selama masa ujian sekolah'
+          ]
+        },
+        {
+          id: 'b4',
+          category: 'Belajar',
+          text: 'Apa mata pelajaran sekolah yang paling menantang bagimu? Mengapa tantangan itu menarik ditaklukkan?',
+          subtext: 'Mengubah pola pikir (mindset) dari takut menjadi penasaran menjamin lompatan nilai akademis.',
+          emoji: '⚙️',
+          points: 15,
+          type: 'short_answer'
+        }
+      ],
+      'Karir': [
+        {
+          id: 'k1',
+          category: 'Karir',
+          text: 'Apabila cita-cita besarmu diremehkan atau ditentang oleh rekan-rekanmu, bagaimana kamu menyikapinya?',
+          subtext: 'Keteguhan mimpi masa depan membutuhkan asertivitas dan persistensi tinggi.',
+          emoji: '🚀',
+          points: 20,
+          type: 'choice',
+          options: [
+            'Menjadikannya pecut motivasi pembuktian lewat prestasi belajar tanpa perlu didebat',
+            'Mengurungkan cita-cita tersebut lalu memilih profilsasi yang lebih umum diminati teman lain',
+            'Berkonsultasi dengan Guru BK sekolah untuk mengenali jembatan potensial yang nyata'
+          ]
+        },
+        {
+          id: 'k2',
+          category: 'Karir',
+          text: 'Tuliskan profesi atau pekerjaan ideal idamanmu di masa depan! Mengapa profesi itu memikat hatimu?',
+          subtext: 'Merintis perencanaan karir sedini mungkin memuluskan penentuan jurusan kuliah kelak.',
+          emoji: '💼',
+          points: 15,
+          type: 'short_answer'
+        },
+        {
+          id: 'k3',
+          category: 'Karir',
+          text: 'Hobi bermanfaat apa yang saat ini aktif kamu pelajari dan asah di luar jam wajib kelas?',
+          subtext: 'Hobi produktif seringkali bermetamorfosis menjadi profesi utama di masa depan anak bangsa.',
+          emoji: '🎸',
+          points: 15,
+          type: 'short_answer'
+        },
+        {
+          id: 'k4',
+          category: 'Karir',
+          text: 'Jika ada pameran karir (Career Day) di kota-mu, apa bidang stan pameran profesi pertama yang ingin kamu masuki?',
+          subtext: 'Mengeksplorasi wawasan profesi secara visual memperkaya perancangan peta hidup (life plan).',
+          emoji: '🎪',
+          points: 15,
+          type: 'choice',
+          options: [
+            'Teknologi Informasi, Rekayasa AI, Robotika, & Animasi Grafis',
+            'Kesehatan, Kedokteran Gigi, Farmasi, & Keperawatan Komunitas',
+            'Industri Kreatif, Seni Peran, Musik Nusantara, & Penulis Novel',
+            'Lainnya (Pertanian modern, Aviasi, Militer, dsb)'
+          ]
+        }
+      ]
+    };
+
+    // ACTIVE STATE VARIABLES
+    let playMode = 'local'; // 'local' or 'online'
+    let currentThemeIdx = 0;
+    
+    // Default local players
+    let localPlayers = [
+      { id: 'p-1', name: 'Rian', avatar: '👦', color: '#3B82F6', position: 1, isAI: false, gender: 'male', score: { Pribadi: 0, Sosial: 0, Belajar: 0, Karir: 0 } },
+      { id: 'p-2', name: 'Asisten AI Budi', avatar: '🤖', color: '#EC4899', position: 1, isAI: true, gender: 'male', score: { Pribadi: 0, Sosial: 0, Belajar: 0, Karir: 0 } }
+    ];
+
+    // Current session active variables (will point to either localPlayers or onlineRoom players)
+    let players = [];
+    let activePlayerIdx = 0;
+    let isPlaying = false;
+    let rollingLocked = false;
+    
+    let currentActiveQuestion = null;
+    let currentSelectedOption = '';
+    let allReflections = []; // Store reflection history: { questionText, category, userAnswer, aiCounselorFeedback, playerName }
+    let logs = [];
+
+    // Online specific states
+    let ws = null;
+    let myOnlinePlayerId = 'p-online-' + Math.random().toString(36).substring(2, 11);
+    let myOnlineName = '';
+    let myOnlineAvatar = '👦';
+    let myOnlineColor = '#3B82F6';
+    let myOnlineGender = 'male';
+    let onlineRoom = null;
+    let isIncomingSync = false;
+
+    // LOCAL THEME POPULATOR
+    function populateThemeSelectors() {
+      const gLocal = document.getElementById('theme-grid-local');
+      gLocal.innerHTML = '';
+      
+      SYSTEMS_THEMES_DATA.forEach((th, idx) => {
+        const isSelected = idx === currentThemeIdx;
+        const activeClass = isSelected ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500' : 'border-slate-200 hover:border-slate-350 bg-white';
+        gLocal.innerHTML += `
+          <button onclick="selectThemeLocal(${idx})" class="p-4 rounded-2xl border-4 text-left transition-all max-w-full flex gap-3 items-start outline-none cursor-pointer ${activeClass}">
+            <span class="text-3xl">${th.emoji}</span>
+            <div class="space-y-1">
+              <h4 class="font-extrabold text-sm text-indigo-950">${th.name}</h4>
+              <p class="text-[11px] text-slate-500 leading-relaxed font-semibold">${th.desc}</p>
+            </div>
+          </button>
+        `;
+      });
+
+      // Update online select dropdown options index
+      const opSel = document.getElementById('online-theme-selector');
+      if (opSel) {
+        opSel.innerHTML = '';
+        SYSTEMS_THEMES_DATA.forEach((th, idx) => {
+          opSel.innerHTML += `<option value="${idx}">${th.emoji} ${th.name}</option>`;
+        });
+      }
+    }
+
+    // ON SCREEN SWATCH RENDERING FOR ONLINE SETUP
+    function renderOnlineProfileSwatches() {
+      const colDiv = document.getElementById('online-color-swatches');
+      colDiv.innerHTML = '';
+      PREBUILT_COLORS.forEach(c => {
+        const isSel = myOnlineColor === c;
+        colDiv.innerHTML += `
+          <button onclick="selectOnlineColor('${c}')" class="w-8 h-8 rounded-full border-2 cursor-pointer transition-all ${isSel ? 'border-slate-900 scale-110 shadow-md' : 'border-white'}" style="background-color: ${c}"></button>
+        `;
+      });
+
+      const avDiv = document.getElementById('online-avatar-swatches');
+      avDiv.innerHTML = '';
+      PREBUILT_AVATARS.forEach(a => {
+        const isSel = myOnlineAvatar === a;
+        avDiv.innerHTML += `
+          <button onclick="selectOnlineAvatar('${a}')" class="w-8 h-8 rounded-xl border-2 text-sm flex items-center justify-center bg-white cursor-pointer transition-all ${isSel ? 'border-indigo-900 bg-indigo-50 scale-110 font-bold' : 'border-slate-200'}" style="background-color: ${a}">${a}</button>
+        `;
+      });
+    }
+
+    function selectOnlineColor(c) {
+      myOnlineColor = c;
+      playSound('click');
+      renderOnlineProfileSwatches();
+    }
+
+    function selectOnlineAvatar(a) {
+      myOnlineAvatar = a;
+      playSound('click');
+      renderOnlineProfileSwatches();
+    }
+
+    // LOCAL PLAYER CONFIG ACTIONS
+    function selectThemeLocal(idx) {
+      currentThemeIdx = idx;
+      playSound('click');
+      populateThemeSelectors();
+      writeLog(`Tema konseling diubah: ${SYSTEMS_THEMES_DATA[idx].name}`, 'system');
+    }
+
+    function addPlayerLocal() {
+      if (localPlayers.length >= 4) {
+        alert("Batas maksimal bimbingan bersama dlm satu layar adalah 4 siswa!");
+        return;
+      }
+      const newIdx = localPlayers.length + 1;
+      const avatar = PREBUILT_AVATARS[newIdx % PREBUILT_AVATARS.length];
+      const color = PREBUILT_COLORS[newIdx % PREBUILT_COLORS.length];
+      localPlayers.push({
+        id: `p-${Date.now()}`,
+        name: `Siswa ${newIdx}`,
+        avatar: avatar,
+        color: color,
+        position: 1,
+        isAI: false,
+        gender: 'male',
+        score: { Pribadi: 0, Sosial: 0, Belajar: 0, Karir: 0 }
+      });
+      playSound('click');
+      renderLocalPlayersConfig();
+    }
+
+    function removePlayerLocal(idx) {
+      localPlayers.splice(idx, 1);
+      playSound('click');
+      renderLocalPlayersConfig();
+    }
+
+    function cycleAvatarLocal(idx) {
+      const currentAv = localPlayers[idx].avatar;
+      const index = PREBUILT_AVATARS.indexOf(currentAv);
+      const nextIndex = (index + 1) % PREBUILT_AVATARS.length;
+      localPlayers[idx].avatar = PREBUILT_AVATARS[nextIndex];
+      playSound('click');
+      renderLocalPlayersConfig();
+    }
+
+    function updatePlayerNameLocal(idx, val) {
+      if (val.trim()) {
+        localPlayers[idx].name = val.trim();
+      }
+    }
+
+    function updatePlayerGenderLocal(idx, val) {
+      localPlayers[idx].gender = val;
+    }
+
+    function togglePlayerAILocal(idx, isAI) {
+      localPlayers[idx].isAI = isAI;
+      if (isAI) {
+        localPlayers[idx].name = `Bot AI ${localPlayers[idx].name.replace('Bot AI ', '')}`;
+      } else {
+        localPlayers[idx].name = localPlayers[idx].name.replace('Bot AI ', '');
+      }
+      playSound('click');
+      renderLocalPlayersConfig();
+    }
+
+    function updatePlayerColorLocal(idx, col) {
+      localPlayers[idx].color = col;
+      playSound('click');
+      renderLocalPlayersConfig();
+    }
+
+    function renderLocalPlayersConfig() {
+      const container = document.getElementById('config-players-list-local');
+      container.innerHTML = '';
+      localPlayers.forEach((p, idx) => {
+        container.innerHTML += `
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3 relative shadow-inner">
+            ${localPlayers.length > 1 ? `
+              <button onclick="removePlayerLocal(${idx})" class="absolute top-3 right-3 text-[9px] bg-red-100 hover:bg-red-250 text-red-650 px-2.5 py-1 rounded font-black uppercase tracking-wider cursor-pointer select-none">Hapus</button>
+            ` : ''}
+            
+            <div class="flex items-center gap-3">
+              <button onclick="cycleAvatarLocal(${idx})" class="w-10 h-10 text-xl border-2 rounded-xl bg-white shadow-sm flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="Ubah Avatar">
+                ${p.avatar}
+              </button>
+              <div class="flex-1 min-w-0">
+                <input type="text" maxlength="12" value="${p.name}" onchange="updatePlayerNameLocal(${idx}, this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800" placeholder="Nama Siswa">
+              </div>
+            </div>
+
+            <!-- Controller Settings / gender selector -->
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] pt-2 border-t border-slate-200/60">
+              <div class="flex items-center gap-1">
+                <span class="text-slate-400 font-extrabold uppercase">Tipe:</span>
+                <button onclick="togglePlayerAILocal(${idx}, false)" class="px-2 py-1 rounded-lg ${!p.isAI ? 'bg-indigo-950 text-white font-extrabold' : 'text-slate-500 font-bold hover:bg-slate-100'} cursor-pointer">Siswa</button>
+                <button onclick="togglePlayerAILocal(${idx}, true)" class="px-2 py-1 rounded-lg ${p.isAI ? 'bg-indigo-950 text-white font-extrabold' : 'text-slate-500 font-bold hover:bg-slate-100'} cursor-pointer">Bot AI</button>
+              </div>
+
+              <div>
+                <select onchange="updatePlayerGenderLocal(${idx}, this.value)" class="bg-white border rounded px-1.5 py-0.5 text-[9px] font-bold text-slate-600">
+                  <option value="male" ${p.gender === 'male' ? 'selected':''}>Laki-laki</option>
+                  <option value="female" ${p.gender === 'female' ? 'selected':''}>Perempuan</option>
+                </select>
+              </div>
+
+              <!-- Color dots -->
+              <div class="flex items-center gap-1 shrink-0">
+                ${PREBUILT_COLORS.map(col => `
+                  <button onclick="updatePlayerColorLocal(${idx}, '${col}')" class="w-3.5 h-3.5 rounded-full border border-white cursor-pointer" style="background-color: ${col}; transform: ${p.color === col ? 'scale(1.25)' : 'none'}; box-shadow: ${p.color === col ? '0 0 5px rgba(0,0,0,0.3)' : 'none'}"></button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // PLAY MODE SWITCHER
+    function setPlayMode(mode) {
+      if (isPlaying) {
+        if (!confirm("Petualangan karakter sedang berjalan. Mengubah mode bermain akan menghapus progres Anda sekarang. Lanjutkan?")) return;
+      }
+      playMode = mode;
+      playSound('click');
+
+      const btnL = document.getElementById('btn-mode-local');
+      const btnO = document.getElementById('btn-mode-online');
+      const pnlL = document.getElementById('setup-panel-local');
+      const pnlO = document.getElementById('setup-panel-online');
+
+      if (mode === 'local') {
+        btnL.className = "flex-1 py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer bg-white text-indigo-950 shadow-sm";
+        btnO.className = "flex-1 py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer text-slate-600 hover:text-slate-900";
+        pnlL.classList.remove('hidden');
+        pnlO.classList.add('hidden');
+        
+        // Disable websocket sync
+        if (ws) {
+          ws.close();
+          ws = null;
+        }
+        document.getElementById('conn-badge').classList.add('hidden');
+      } else {
+        btnO.className = "flex-1 py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer bg-white text-indigo-950 shadow-sm";
+        btnL.className = "flex-1 py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer text-slate-600 hover:text-slate-900";
+        pnlO.classList.remove('hidden');
+        pnlL.classList.add('hidden');
+        
+        // Active websocket status indicator
+        document.getElementById('conn-badge').classList.remove('hidden');
+        connectWebSocket();
+      }
+
+      // Force game state back
+      restartSetup();
+    }
+
+    // WEBSOCKET BROKER INTEGRATION
+    function connectWebSocket(onConnectedCallback) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        if (onConnectedCallback) onConnectedCallback();
+        return;
+      }
+
+      const badge = document.getElementById('conn-badge');
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Menyambung...`;
+
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Fallback url for tests
+      const wsUrl = `${wsProtocol}//${window.location.host}`;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log('WS linked to backend broker!');
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Terhubung`;
+          badge.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/50 border border-emerald-200 text-xs font-black uppercase text-emerald-600";
+          
+          if (onConnectedCallback) onConnectedCallback();
+
+          // Heartbeat keep-alive ping
+          const pingInterval = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'PING' }));
+            }
+          }, 20000);
+          ws._pingInterval = pingInterval;
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+              case 'ROOM_CREATED':
+              case 'ROOM_JOINED': {
+                onlineRoom = data.payload.room;
+                players = data.payload.room.players;
+                currentThemeIdx = SYSTEMS_THEMES_DATA.findIndex(th => th.id === data.payload.room.selectedTheme.id);
+                if (currentThemeIdx === -1) currentThemeIdx = 0;
+                
+                showLobbyPanel();
+                break;
+              }
+              case 'ROOM_UPDATED': {
+                const rRoom = data.payload;
+                isIncomingSync = true;
+                
+                onlineRoom = rRoom;
+                players = rRoom.players;
+                activePlayerIdx = rRoom.activePlayerIdx;
+                isPlaying = rRoom.isPlaying;
+                allReflections = rRoom.allReflections || [];
+                logs = rRoom.logs || [];
+                
+                currentThemeIdx = SYSTEMS_THEMES_DATA.findIndex(th => th.id === rRoom.selectedTheme.id);
+                if (currentThemeIdx === -1) currentThemeIdx = 0;
+
+                updateScoresContainerUI();
+                renderLogsBoxUI();
+                
+                if (isPlaying) {
+                  document.getElementById('setup-panel-online').classList.add('hidden');
+                  document.getElementById('board-panel').classList.remove('hidden');
+                  document.getElementById('dice-sidebar').classList.remove('hidden');
+                  document.getElementById('btn-restart-game').classList.remove('hidden');
+                  
+                  drawBoardUI();
+                  updateTurnHeaderUI();
+
+                  if (rRoom.winner) {
+                    announceWinner(rRoom.winner);
+                  }
+                } else {
+                  showLobbyPanel();
+                }
+
+                setTimeout(() => { isIncomingSync = false; }, 80);
+                break;
+              }
+              case 'REMOTE_ACTION': {
+                // handle actions like dice rolls if triggered as event broad
+                break;
+              }
+              case 'ERROR': {
+                alert(`Error Server: ${data.payload}`);
+                break;
+              }
+            }
+          } catch (e) {
+            console.error('Failed reading WS message chunk', e);
+          }
+        };
+
+        ws.onclose = () => {
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span> Terputus`;
+          badge.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-black uppercase text-slate-400";
+          if (ws && ws._pingInterval) clearInterval(ws._pingInterval);
+        };
+
+        ws.onerror = (err) => {
+          console.warn('WS Broker connectivity failed. Running with offline UI controls: ', err);
+        };
+      } catch (err) {
+        console.warn('WS Broker failure: ', err);
+      }
+    }
+
+    // STATE TRANSFORMATION SENDER ON MULTIPLAYER GAME ACTIONS
+    function syncGameStateToServer() {
+      if (playMode !== 'online' || !onlineRoom || isIncomingSync) return;
+
+      const statePack = {
+        players: players,
+        activePlayerIdx: activePlayerIdx,
+        logs: logs,
+        allReflections: allReflections,
+        isPlaying: isPlaying,
+        winner: onlineRoom.winner,
+        selectedTheme: SYSTEMS_THEMES_DATA[currentThemeIdx]
+      };
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'SYNC_STATE',
+          payload: {
+            roomCode: onlineRoom.code,
+            state: statePack
+          }
+        }));
+      }
+    }
+
+    // ROOM LOBBY INTERFACES FOR ACTIVE ONLINE PARTY
+    function showLobbyPanel() {
+      const panel = document.getElementById('online-lobby-panel');
+      panel.classList.remove('hidden');
+      
+      document.getElementById('lobby-code-display').innerText = onlineRoom.code;
+      document.getElementById('lobby-theme-display-pill').innerText = onlineRoom.selectedTheme.name;
+      document.getElementById('lobby-count').innerText = players.length;
+
+      const grid = document.getElementById('lobby-players-grid');
+      grid.innerHTML = '';
+      players.forEach(p => {
+        const isMe = p.id === myOnlinePlayerId;
+        const isHost = onlineRoom.hostPlayerId === p.id;
+        grid.innerHTML += `
+          <div class="flex items-center justify-between p-3.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+            <div class="flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-lg flex items-center justify-center border text-base" style="border-color:${p.color};">${p.avatar}</span>
+              <div>
+                <span class="text-xs font-bold text-indigo-950 block">${p.name} ${isMe ? ' (Anda)': ''}</span>
+                <span class="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">${p.gender === 'male' ? 'Siswa' : 'Siswi'}</span>
+              </div>
+            </div>
+            ${isHost ? `<span class="bg-indigo-900 text-white font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded leading-normal">HOST</span>`: ''}
+          </div>
+        `;
+      });
+
+      // Show starter controls to host only
+      const hostCtrls = document.getElementById('lobby-host-controls');
+      if (onlineRoom.hostPlayerId === myOnlinePlayerId) {
+        hostCtrls.classList.remove('hidden');
+      } else {
+        hostCtrls.innerHTML = `<p class="text-xs font-bold text-center text-indigo-600 animate-pulse py-2">Menunggu Host Memulai Petualangan Karakter...</p>`;
+        hostCtrls.classList.remove('hidden');
+      }
+    }
+
+    // MULTIPLAYER ROOM TRIGGERS
+    function createOnlineRoom() {
+      const nameInp = document.getElementById('online-my-name').value.trim();
+      if (!nameInp) {
+        alert('Tulis nama lengkap siswa Anda terlebih dahulu!');
+        return;
+      }
+      myOnlineName = nameInp;
+      myOnlineGender = document.getElementById('online-my-gender').value;
+
+      connectWebSocket(() => {
+        const themeId = parseInt(document.getElementById('online-theme-selector').value);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'CREATE_ROOM',
+            payload: {
+              hostName: myOnlineName,
+              avatar: myOnlineAvatar,
+              color: myOnlineColor,
+              gender: myOnlineGender,
+              playerId: myOnlinePlayerId,
+              selectedTheme: SYSTEMS_THEMES_DATA[themeId]
+            }
+          }));
+        }
+      });
+    }
+
+    function joinOnlineRoom() {
+      const nameInp = document.getElementById('online-my-name').value.trim();
+      const codeInp = document.getElementById('online-room-code-input').value.trim();
+      if (!nameInp) {
+        alert('Tulis nama lengkap siswa Anda terlebih dahulu!');
+        return;
+      }
+      if (!codeInp || codeInp.length < 4) {
+        alert('Tolong masukkan kode access 4-digit room!');
+        return;
+      }
+      myOnlineName = nameInp;
+      myOnlineGender = document.getElementById('online-my-gender').value;
+
+      connectWebSocket(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'JOIN_ROOM',
+            payload: {
+              roomCode: codeInp,
+              name: myOnlineName,
+              avatar: myOnlineAvatar,
+              color: myOnlineColor,
+              gender: myOnlineGender,
+              playerId: myOnlinePlayerId
+            }
+          }));
+        }
+      });
+    }
+
+    function startOnlineGame() {
+      if (players.length === 0) return;
+      isPlaying = true;
+      activePlayerIdx = 0;
+
+      // Broadcast room starts to websocket broker
+      onlineRoom.isPlaying = true;
+      writeLog(`🚪 MEMULAI SESI MULTIPLAYER ONLINE: Papan bimbingan aktif!`, 'system');
+      syncGameStateToServer();
+    }
+
+    // LOCAL START GAME
+    function startGameLocal() {
+      isPlaying = true;
+      activePlayerIdx = 0;
+      players = JSON.parse(JSON.stringify(localPlayers));
+
+      // Reset positions & scores
+      players.forEach(p => {
+        p.position = 1;
+        p.score = { Pribadi: 0, Sosial: 0, Belajar: 0, Karir: 0 };
+      });
+
+      document.getElementById('setup-panel-local').classList.add('hidden');
+      document.getElementById('board-panel').classList.remove('hidden');
+      document.getElementById('dice-sidebar').classList.remove('hidden');
+      document.getElementById('btn-restart-game').classList.remove('hidden');
+
+      writeLog(`🚪 MEMULAI GAME: Papan 5x5 interaktif diaktifkan!`, 'system');
+      writeLog(`Paket Materi Konseling: ${SYSTEMS_THEMES_DATA[currentThemeIdx].name} ${SYSTEMS_THEMES_DATA[currentThemeIdx].emoji}`, 'system');
+
+      drawBoardUI();
+      updateScoresContainerUI();
+      updateTurnHeaderUI();
+      playSound('success');
+
+      checkAIPilotTurn();
+    }
+
+    function confirmReset() {
+      if (confirm("Apakah Anda yakin ingin mematikan petualangan karakter yang berjalan dan kembali ke menu setup awal?")) {
+        restartSetup();
+      }
+    }
+
+    function restartSetup() {
+      isPlaying = false;
+      onlineRoom = null;
+      allReflections = [];
+      logs = [];
+      
+      document.getElementById('setup-panel-local').classList.remove('hidden');
+      document.getElementById('board-panel').classList.add('hidden');
+      document.getElementById('dice-sidebar').classList.add('hidden');
+      document.getElementById('btn-restart-game').classList.add('hidden');
+      document.getElementById('winner-backdrop').classList.add('hidden');
+      document.getElementById('online-lobby-panel').classList.add('hidden');
+      
+      document.getElementById('logs-box').innerHTML = '';
+      
+      if (playMode === 'online') {
+        document.getElementById('setup-panel-local').classList.add('hidden');
+        document.getElementById('setup-panel-online').classList.remove('hidden');
+      }
+
+      populateThemeSelectors();
+      renderLocalPlayersConfig();
+    }
+
+    // DRAW BOARD MODULE
+    function drawBoardUI() {
+      const grid = document.getElementById('board-grid');
+      grid.innerHTML = '';
+
+      const boardMatrix = Array(5).fill(null).map(() => Array(5).fill(null));
+      for (let cellVal = 1; cellVal <= 25; cellVal++) {
+        const coords = COORDINATES[cellVal];
+        boardMatrix[coords.row][coords.col] = cellVal;
+      }
+
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          const number = boardMatrix[r][c];
+          
+          let cellBg = "bg-white";
+          let specialText = "";
+          
+          if (number === 1) {
+            cellBg = "bg-emerald-50";
+            specialText = "START";
+          } else if (number === 25) {
+            cellBg = "bg-yellow-50 animate-pulse";
+            specialText = "FINISH";
+          } else {
+            let cat = getCellCategory(number);
+            if (cat === "Pribadi") cellBg = "bg-teal-50/40";
+            else if (cat === "Sosial") cellBg = "bg-indigo-50/40";
+            else if (cat === "Belajar") cellBg = "bg-amber-50/40";
+            else if (cat === "Karir") cellBg = "bg-rose-50/40";
+          }
+
+          let entityBadge = "";
+          if (LADDERS_MAP[number]) {
+            entityBadge = `<span class="bg-emerald-500 text-white rounded px-1 text-[8px] font-black absolute top-1 right-1 leading-normal">▲ T${number}</span>`;
+          } else if (SNAKES_MAP[number]) {
+            entityBadge = `<span class="bg-red-500 text-white rounded px-1 text-[8px] font-black absolute top-1 right-1 leading-normal">▼ U${number}</span>`;
+          }
+
+          let tokensHTML = "";
+          players.forEach(p => {
+            if (p.position === number) {
+              tokensHTML += `
+                <div class="w-7 h-7 text-[15px] border-2 border-white rounded-full flex items-center justify-center shadow-md select-none animate-bounce" style="background-color: ${p.color};" title="${p.name}">
+                  ${p.avatar}
+                </div>
+              `;
+            }
+          });
+
+          grid.innerHTML += `
+            <div class="border relative flex flex-col items-center justify-between p-1.5 ${cellBg} group transition-all duration-200 select-none">
+              <span class="text-[9px] font-bold text-slate-400 absolute bottom-1 left-1.5 mono-font">#${number}</span>
+              ${specialText ? `<span class="text-[8px] font-black tracking-wider text-slate-600 bg-slate-100 rounded px-1 absolute bottom-1 right-1.5">${specialText}</span>` : ''}
+              ${entityBadge}
+              <div class="flex flex-wrap items-center justify-center gap-1 w-full h-full my-auto py-2.5">
+                ${tokensHTML}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      drawConnectionLines();
+    }
+
+    function getCellCategory(pos) {
+      const categories = ["Pribadi", "Sosial", "Belajar", "Karir"];
+      return categories[pos % categories.length];
+    }
+
+    function drawConnectionLines() {
+      const svg = document.getElementById('board-lines-overlay');
+      svg.innerHTML = '';
+      
+      const width = svg.clientWidth || 400;
+      const height = svg.clientHeight || 400;
+      const cellSize = width / 5;
+
+      const getCenter = (num) => {
+        const coord = COORDINATES[num];
+        const x = (coord.col * cellSize) + (cellSize / 2);
+        const y = (coord.row * cellSize) + (cellSize / 2);
+        return { x, y };
+      };
+
+      // Draw Ladders (Green lines)
+      Object.entries(LADDERS_MAP).forEach(([start, end]) => {
+        const pt1 = getCenter(parseInt(start));
+        const pt2 = getCenter(parseInt(end));
+        svg.innerHTML += `
+          <line x1="${pt1.x}" y1="${pt1.y}" x2="${pt2.x}" y2="${pt2.y}" class="board-line" stroke="#10B981" stroke-width="5" />
+          <circle cx="${pt1.x}" cy="${pt1.y}" r="4" fill="#10B981" />
+          <circle cx="${pt2.x}" cy="${pt2.y}" r="5.5" fill="#10B981" />
+        `;
+      });
+
+      // Draw Snakes (Red lines)
+      Object.entries(SNAKES_MAP).forEach(([start, end]) => {
+        const pt1 = getCenter(parseInt(start));
+        const pt2 = getCenter(parseInt(end));
+        svg.innerHTML += `
+          <line x1="${pt1.x}" y1="${pt1.y}" x2="${pt2.x}" y2="${pt2.y}" class="board-line" stroke="#EF4444" stroke-width="5" />
+          <circle cx="${pt1.x}" cy="${pt1.y}" r="4" fill="#EF4444" />
+          <circle cx="${pt2.x}" cy="${pt2.y}" r="5.5" fill="#EF4444" />
+        `;
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (isPlaying) drawConnectionLines();
+    });
+
+    // GENERAL WORKSPACE UI RENDER MODULES 
+    function updateTurnHeaderUI() {
+      const p = players[activePlayerIdx];
+      if (!p) return;
+      document.getElementById('active-turn-avatar').innerHTML = p.avatar;
+      document.getElementById('active-turn-avatar').style.borderColor = p.color;
+      document.getElementById('active-turn-name').innerText = p.name;
+      
+      const isMyOnlineTurn = playMode === 'online' && p.id === myOnlinePlayerId;
+      if (playMode === 'online') {
+        document.getElementById('active-turn-control').innerText = isMyOnlineTurn ? 'GILIRAN ANDA' : 'MENUNGGU KAWAN';
+        document.getElementById('btn-roll').className = isMyOnlineTurn 
+          ? "w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase rounded-xl tracking-wider shadow duration-150 cursor-pointer"
+          : "w-full py-2.5 px-4 bg-slate-200 text-slate-400 font-extrabold text-xs uppercase rounded-xl tracking-wider shadow cursor-not-allowed";
+      } else {
+        document.getElementById('active-turn-control').innerText = p.isAI ? "OTOMATIS (BOT AI)" : "KONTROL MANUAL";
+        document.getElementById('btn-roll').className = "w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase rounded-xl tracking-wider shadow duration-150 cursor-pointer";
+      }
+    }
+
+    function updateScoresContainerUI() {
+      const scoresBox = document.getElementById('scores-container');
+      scoresBox.innerHTML = '';
+
+      players.forEach(p => {
+        const isMeOnline = playMode === 'online' && p.id === myOnlinePlayerId;
+        scoresBox.innerHTML += `
+          <div class="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 font-extrabold text-xs text-indigo-950 uppercase">
+                <span class="w-6 h-6 text-sm flex items-center justify-center border rounded bg-white shadow-sm" style="border-color: ${p.color};">${p.avatar}</span>
+                <span>${p.name} ${isMeOnline ? ' (Anda)': ''}</span>
+              </span>
+              <span class="font-mono text-xs font-black bg-indigo-900 text-white px-2 py-0.5 rounded-md">Petak ${p.position}</span>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1 pt-1 text-[9px] font-black text-center text-white">
+              <div class="bg-teal-600 rounded py-1 px-0.5" title="Skor Pribadi: ${p.score.Pribadi}">PRI: ${p.score.Pribadi}</div>
+              <div class="bg-indigo-600 rounded py-1 px-0.5" title="Skor Sosial: ${p.score.Sosial}">SOS: ${p.score.Sosial}</div>
+              <div class="bg-amber-600 rounded py-1 px-0.5" title="Skor Belajar: ${p.score.Belajar}">BEL: ${p.score.Belajar}</div>
+              <div class="bg-rose-600 rounded py-1 px-0.5" title="Skor Karir: ${p.score.Karir}">KAR: ${p.score.Karir}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // DICE LOGICS
+    function rollDice() {
+      if (!isPlaying || rollingLocked) return;
+
+      const p = players[activePlayerIdx];
+      if (playMode === 'online' && p.id !== myOnlinePlayerId) {
+        // Prevent roll if it's high level sync
+        return;
+      }
+
+      rollingLocked = true;
+      playSound('roll');
+
+      const diceBox = document.getElementById('dice-element');
+      diceBox.classList.add('dice-rolling');
+      diceBox.innerText = '🎲';
+
+      setTimeout(() => {
+        const val = Math.floor(Math.random() * 6) + 1;
+        diceBox.classList.remove('dice-rolling');
+        diceBox.innerText = val;
+        
+        executeMoves(val);
+      }, 750);
+    }
+
+    function executeMoves(steps) {
+      const p = players[activePlayerIdx];
+      const startPos = p.position;
+      let newPos = startPos + steps;
+
+      if (newPos > 25) {
+        let diff = newPos - 25;
+        newPos = 25 - diff;
+        writeLog(`🎯 Dadu ${p.name}: ${steps}. Poin berlebih! Memantul balik ke petak ${newPos}.`, 'system');
+      } else {
+        writeLog(`🎲 Dadu ${p.name}: ${steps}. Melangkah maju dari #${startPos} ke #${newPos}.`, 'system');
+      }
+
+      p.position = newPos;
+      drawBoardUI();
+      playSound('click');
+
+      setTimeout(() => {
+        checkForObstacles(newPos);
+      }, 600);
+    }
+
+    function checkForObstacles(pos) {
+      const p = players[activePlayerIdx];
+
+      if (LADDERS_MAP[pos]) {
+        const climbTarget = LADDERS_MAP[pos];
+        writeLog(`🎈 TANGGA KEBAIKAN! ${p.avatar} ${p.name} melesat naik dari #${pos} ke #${climbTarget}!`, 'success');
+        p.position = climbTarget;
+        playSound('ladder');
+        drawBoardUI();
+        
+        setTimeout(() => {
+          triggerReflectionModal(climbTarget);
+        }, 600);
+      } 
+      else if (SNAKES_MAP[pos]) {
+        const slideTarget = SNAKES_MAP[pos];
+        writeLog(`🐍 ULAR PERBAIKAN! ${p.avatar} ${p.name} meluncur turun dari #${pos} ke #${slideTarget}...`, 'snake');
+        p.position = slideTarget;
+        playSound('snake');
+        drawBoardUI();
+        
+        setTimeout(() => {
+          triggerReflectionModal(slideTarget);
+        }, 600);
+      } 
+      else {
+        triggerReflectionModal(pos);
+      }
+    }
+
+    // REFLECTION MODALS EXHAUSTIVE WORKFLOWS
+    function triggerReflectionModal(pos) {
+      const p = players[activePlayerIdx];
+
+      if (pos === 25) {
+        announceWinner(p);
+        return;
+      }
+
+      const cat = getCellCategory(pos);
+      const catQuestions = REFL_QUESTIONS_POOL[cat];
+      const q = catQuestions[pos % catQuestions.length];
+
+      currentActiveQuestion = { ...q, activePlayerId: p.id };
+
+      document.getElementById('modal-backdrop').classList.add('flex');
+      document.getElementById('modal-backdrop').classList.remove('hidden');
+      document.getElementById('modal-category').innerText = cat;
+      
+      let catBg = "bg-teal-100 text-teal-800";
+      if (cat === "Sosial") catBg = "bg-indigo-100 text-indigo-800";
+      else if (cat === "Belajar") catBg = "bg-amber-100 text-amber-800";
+      else if (cat === "Karir") catBg = "bg-rose-100 text-rose-800";
+      document.getElementById('modal-category').className = `text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider ${catBg}`;
+
+      document.getElementById('modal-badge-emoji').innerText = q.emoji;
+      document.getElementById('modal-player-turn').innerHTML = `Petak #${pos} &bull; ${p.name} ${playMode === 'online' && p.id === myOnlinePlayerId ? '(Anda)' : ''}`;
+      document.getElementById('modal-points').innerText = `+${q.points} Poin ${cat}`;
+      document.getElementById('modal-question-text').innerText = q.text;
+      document.getElementById('modal-subtext').innerText = q.subtext;
+
+      document.getElementById('modal-feedback-area').classList.add('hidden');
+      const inputs = document.getElementById('modal-inputs-area');
+      inputs.innerHTML = '';
+      currentSelectedOption = '';
+
+      const isMyTurn = playMode === 'local' || p.id === myOnlinePlayerId;
+
+      if (!isMyTurn) {
+        // Online viewer screen state waiting of remote answers
+        inputs.innerHTML = `
+          <div class="p-6 text-center text-slate-400 font-bold border-2 border-dashed rounded-xl animate-pulse">
+            Menunggu ${p.name} Menulis Tanggapan Refleksi...
+          </div>
+        `;
+        document.getElementById('btn-modal-submit').classList.add('hidden');
+        return;
+      }
+
+      if (q.type === 'choice' && q.options) {
+        q.options.forEach((opt, idx) => {
+          inputs.innerHTML += `
+            <button id="opt-${idx}" onclick="selectModalOption(${idx}, '${opt}')" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer">
+              <span class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0" id="bullet-${idx}">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 hidden" id="bullet-inner-${idx}"></span>
+              </span>
+              <span>${opt}</span>
+            </button>
+          `;
+        });
+      } else {
+        inputs.innerHTML = `
+          <textarea id="text-reflection-area" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-300 focus:outline-none text-slate-800" rows="3" placeholder="Tuliskan refleksi, perasaan, atau pandangan Anda di sini secara jujur..."></textarea>
+        `;
+      }
+
+      document.getElementById('btn-modal-submit').classList.remove('hidden');
+      document.getElementById('btn-modal-next').classList.add('hidden');
+
+      // BOT AUTOPILOT MOVES
+      if (playMode === 'local' && p.isAI) {
+        document.getElementById('btn-modal-submit').classList.add('hidden');
+        writeLog(`🤖 Guru BK sedang mencerna gagasan untuk Bot ${p.name}...`, 'system');
+        
+        setTimeout(() => {
+          executeAIPerceptionAnswer(q, cat);
+        }, 1500);
+      }
+    }
+
+    function selectModalOption(idx, optionText) {
+      currentSelectedOption = optionText;
+      playSound('click');
+      
+      const buttons = document.getElementById('modal-inputs-area').getElementsByTagName('button');
+      for (let i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('border-indigo-600', 'bg-indigo-50/50');
+        const inner = document.getElementById(`bullet-inner-${i}`);
+        if (inner) inner.classList.add('hidden');
+      }
+      
+      const matchedBtn = document.getElementById(`opt-${idx}`);
+      if (matchedBtn) matchedBtn.classList.add('border-indigo-600', 'bg-indigo-50/50');
+      const innerBullet = document.getElementById(`bullet-inner-${idx}`);
+      if (innerBullet) innerBullet.classList.remove('hidden');
+    }
+
+    // FEEDBACK & SOLVING PIPES (real fetch with offline backoff)
+    async function submitModalReflection() {
+      const p = players[activePlayerIdx];
+      let answer = '';
+
+      if (currentActiveQuestion.type === 'choice') {
+        if (!currentSelectedOption) {
+          alert('Pilih salah satu jawaban terlebih dahulu! 💡');
+          return;
+        }
+        answer = currentSelectedOption;
+      } else {
+        const area = document.getElementById('text-reflection-area');
+        if (!area || !area.value.trim()) {
+          alert('Tuliskan refleksi singkat Anda terlebih dahulu pada kotak teks! 📝');
+          return;
+        }
+        answer = area.value.trim();
+      }
+
+      // Lock buttons
+      document.getElementById('btn-modal-submit').classList.add('hidden');
+      
+      // Hit counselor endpoint of local node servers (with intelligent offline safety wrapper)
+      writeLog(`✏️ ${p.name} mengirimkan respon untuk pilar ${currentActiveQuestion.category}.`, 'system');
+      
+      let counselorResponseFeedback = '';
+      
+      try {
+        const responseReq = await fetch('/api/counselor/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerName: p.name,
+            category: currentActiveQuestion.category,
+            question: currentActiveQuestion.text,
+            answer: answer,
+            theme: SYSTEMS_THEMES_DATA[currentThemeIdx].name
+          })
+        });
+
+        if (responseReq.ok) {
+          const resJson = await responseReq.json();
+          counselorResponseFeedback = resJson.feedback;
+        } else {
+          counselorResponseFeedback = getRuleBasedCounselorFeedback(p.name, currentActiveQuestion.category, answer);
+        }
+      } catch (err) {
+        counselorResponseFeedback = getRuleBasedCounselorFeedback(p.name, currentActiveQuestion.category, answer);
+      }
+
+      // Add scores immediately
+      p.score[currentActiveQuestion.category] = (p.score[currentActiveQuestion.category] || 0) + currentActiveQuestion.points;
+
+      // Add reflection to local cache of general reporter
+      allReflections.push({
+        playerName: p.name,
+        category: currentActiveQuestion.category,
+        questionText: currentActiveQuestion.text,
+        userAnswer: answer,
+        aiCounselorFeedback: counselorResponseFeedback
+      });
+
+      // Show Counsel review interface inside popup
+      const counselArea = document.getElementById('modal-feedback-area');
+      counselArea.classList.remove('hidden');
+      document.getElementById('modal-feedback-text').innerText = counselorResponseFeedback;
+      
+      document.getElementById('btn-modal-next').classList.remove('hidden');
+      playSound('success');
+
+      updateScoresContainerUI();
+
+      if (playMode === 'online') {
+        syncGameStateToServer();
+      }
+    }
+
+    // BOT AUTO SOLVER REFLECTIONS
+    function executeAIPerceptionAnswer(q, cat) {
+      const p = players[activePlayerIdx];
+      let answer = "";
+      
+      if (q.type === 'choice' && q.options) {
+        answer = q.options[Math.floor(Math.random() * q.options.length)];
+      } else {
+        const fallbackAnswers = [
+          "Saya akan merundingkannya secara santun bersama guru bimbingan konseling dan kawan dekat saya.",
+          "Menghormati perbedaan pemikiran serta selalu berusaha meluangkan waktu berbenah diri.",
+          "Membina komunikasi asertif yang bernilai sopan santun dimanapun saya ditugaskan."
+        ];
+        answer = fallbackAnswers[Math.floor(Math.random() * fallbackAnswers.length)];
+      }
+
+      p.score[cat] = (p.score[cat] || 0) + q.points;
+      const feedback = getRuleBasedCounselorFeedback(p.name, cat, answer);
+
+      allReflections.push({
+        playerName: p.name,
+        category: cat,
+        questionText: q.text,
+        userAnswer: answer,
+        aiCounselorFeedback: feedback
+      });
+
+      // Show Bot decision box
+      const inputs = document.getElementById('modal-inputs-area');
+      inputs.innerHTML = `
+        <div class="p-3.5 bg-indigo-50 border border-indigo-150 rounded-xl text-xs font-black text-indigo-950">
+          Tanggapan Bot ${p.name}: <span class="font-medium text-slate-700 italic block mt-1">"${answer}"</span>
+        </div>
+      `;
+
+      const counselArea = document.getElementById('modal-feedback-area');
+      counselArea.classList.remove('hidden');
+      document.getElementById('modal-feedback-text').innerText = feedback;
+      
+      document.getElementById('btn-modal-next').classList.remove('hidden');
+      playSound('success');
+
+      updateScoresContainerUI();
+
+      if (playMode === 'online') {
+        syncGameStateToServer();
+      }
+    }
+
+    // Next turn handler inside modal closing
+    function closeModalNextTurn() {
+      document.getElementById('modal-backdrop').classList.add('hidden');
+      document.getElementById('modal-backdrop').classList.remove('flex');
+
+      // Next player cycle
+      activePlayerIdx = (activePlayerIdx + 1) % players.length;
+      rollingLocked = false;
+      
+      updateTurnHeaderUI();
+
+      writeLog(`👉 Giliran selanjutnya diserahkan kepada: ${players[activePlayerIdx].name}.`, 'system');
+
+      if (playMode === 'online') {
+        syncGameStateToServer();
+      } else {
+        checkAIPilotTurn();
+      }
+    }
+
+    function checkAIPilotTurn() {
+      const activePlayer = players[activePlayerIdx];
+      if (isPlaying && activePlayer && activePlayer.isAI && !rollingLocked) {
+        // Auto trigger bot shaking dice
+        writeLog(`🤖 Bot ${activePlayer.name} bersiap mengocok dadu karakter...`, 'system');
+        setTimeout(() => {
+          rollDice();
+        }, 1500);
+      }
+    }
+
+    // INTELLIGENT RULE BASED PERSONA FALLBACK FOR OFFLINE OR STANDALONE GITHUB PAGES
+    function getRuleBasedCounselorFeedback(playerName, category, answer) {
+      const lowAns = answer.trim().toLowerCase();
+      if (lowAns.length < 5) {
+        return `Halo ${playerName}. Terima kasih ya sudah berkenan menjawab petak konseling ${category} ini. Jangan sungkan untuk mengungkapkan gagasanmu lebih luas di sesi berikutnya! Setiap ceritamu sangat berharga bagi peningkatan diri.`;
+      }
+
+      switch (category) {
+        case 'Pribadi':
+          return `Luar biasa sekali, ${playerName}! Refleksi tentang dirimu menunjukkan kedewasaan mental yang sangat bagus. Mengetahui emosi pribadi adalah modal dasar dari rasa percaya dirimu yang tangguh. Teruskan kebiasaan asertif ini kawan!`;
+        case 'Sosial':
+          return `Sangat bangga mendengarnya, ${playerName}! Nilai solidaritas sosial, empati, dan sikap anti-bullying yang tercermin dari jawabanmu sungguh inspiratif. Teruslah berkontribusi menebar kebaikan di kelas ya.`;
+        case 'Belajar':
+          return `Luar biasa, ${playerName}! Semangat belajarmu terpancar kuat dari cara berpikir taktis dalam membagi waktu luang dan fokus belajar kelas. Pertahankan konsistensi ini demi merengkuh cita-citamu tertinggi!`;
+        case 'Karir':
+          return `Refleksi karirmu luar biasa, ${playerName}! Persiapan karir masa depan yang matang dimulai dari keseriusan hobi dan disiplin belajarmu hari ini. Bapak/Ibu guru BK selalu mendoakan dan mendampingi kelancaran mimpimu!`;
+        default:
+          return `Jawaban yang sangat mendalam dan penuh kejujuran, ${playerName}. Refleksi dirimu melambangkan karakter asertif yang luhur. Pertahankan keunggulan karakter ini dalam aktivitas sehari-hari!`;
+      }
+    }
+
+    // SYSTEM JOURNAL MANAGEMENT
+    function writeLog(text, type) {
+      const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      logs.unshift({ id: `log-${Date.now()}-${Math.random()}`, timestamp: time, text, type });
+      renderLogsBoxUI();
+    }
+
+    function renderLogsBoxUI() {
+      const box = document.getElementById('logs-box');
+      box.innerHTML = '';
+      logs.forEach(l => {
+        let textClr = 'text-indigo-250';
+        if (l.type === 'success') textClr = 'text-emerald-400 font-bold';
+        else if (l.type === 'snake') textClr = 'text-rose-400 font-bold';
+        else if (l.type === 'system') textClr = 'text-yellow-300';
+
+        box.innerHTML += `
+          <div class="leading-relaxed border-b border-indigo-900 pb-1.5">
+            <span class="text-[9px] text-indigo-400 font-bold"> [${l.timestamp}]</span>
+            <span class="${textClr}"> ${l.text}</span>
+          </div>
+        `;
+      });
+    }
+
+    function clearLogs() {
+      logs = [];
+      renderLogsBoxUI();
+      playSound('click');
+    }
+
+    // GAME OVER CONGRATULATIONS & PDF DOWNLOAD COMPILATION
+    let savedWinnerProfile = null;
+    function announceWinner(p) {
+      isPlaying = false;
+      savedWinnerProfile = JSON.parse(JSON.stringify(p));
+
+      document.getElementById('winner-backdrop').classList.remove('hidden');
+      document.getElementById('winner-backdrop').classList.add('flex');
+      
+      document.getElementById('winner-congratulations').innerHTML = `Selamat Kepada ${p.name}! 🎉`;
+      
+      const statsDiv = document.getElementById('winner-radar-stats');
+      statsDiv.innerHTML = '';
+
+      // Compiling recommendative summary output
+      const recResult = getCounselingRecommendationText(p.score);
+      statsDiv.innerHTML = `
+        <div class="space-y-3 font-semibold text-slate-700">
+          <div class="flex flex-wrap gap-2 text-[10px] text-white">
+            <span class="bg-teal-600 px-2 py-1 rounded-md">PRIBADI: ${p.score.Pribadi || 0} p</span>
+            <span class="bg-indigo-600 px-2 py-1 rounded-md">SOSIAL: ${p.score.Sosial || 0} p</span>
+            <span class="bg-amber-600 px-2 py-1 rounded-md">BELAJAR: ${p.score.Belajar || 0} p</span>
+            <span class="bg-rose-600 px-2 py-1 rounded-md">KARIR: ${p.score.Karir || 0} p</span>
+          </div>
+          <div class="border-l-4 border-yellow-500 pl-3 leading-relaxed py-1">
+            <strong class="text-indigo-950 font-black block text-xs uppercase mb-1">Kekuatan Tertinggi: Pilar ${recResult.strengthText}</strong>
+            <strong class="text-indigo-950 font-black block text-xs uppercase mb-1">Arah Peningkatan Karakter: Pilar ${recResult.growthText}</strong>
+            <p class="text-[11px] leading-relaxed mt-2 text-slate-600">${recResult.analysis}</p>
+          </div>
+        </div>
+      `;
+
+      if (playMode === 'online') {
+        onlineRoom.winner = p;
+        onlineRoom.isPlaying = false;
+        syncGameStateToServer();
+      }
+      playSound('success');
+    }
+
+    function getCounselingRecommendationText(score) {
+      const entries = Object.entries(score);
+      entries.sort((a, b) => b[1] - a[1]); // Descending
+      const highest = entries[0];
+      const lowest = entries[entries.length - 1];
+
+      const strengthText = highest[0];
+      const growthText = lowest[0];
+
+      let analysis = "";
+      if (strengthText === "Pribadi") {
+        analysis = "Karakter siswa sangat matang di pilar Pribadi. Siswa memiliki konsep diri yang kokoh, tangguh dalam managemen emosional, asertif, serta jujur terhadap perasaannya. Hal ini menjadi benteng asertivitas yang hebat.";
+      } else if (strengthText === "Sosial") {
+        analysis = "Kekuatan utama siswa resides pada kepekaan pilar Sosial. Senang merangkul persahabatan kelompok kawan dekat, memiliki kecerdasan empati yang tinggi, anti perundungan, dan peka menolong sesama di kelas.";
+      } else if (strengthText === "Belajar") {
+        analysis = "Siswa memiliki kedisiplinan dan kegigihan akademis yang luar biasa di pilar Belajar. Terorganisir, pandai mengatur waktu ulangan, tuntas membuat tugas, dan selalu penasaran dalam menguasai ragam tantangan materi baru.";
+      } else {
+        analysis = "Eksplorasi pilar Karir siswa sangat cemerlang. Memiliki rencana cita-cita masa depan yang jelas, ulet mengaitkan bakat diri dengan profesi idaman masa depan, serta aktif menekuni aneka hobi produktif.";
+      }
+
+      if (growthText === "Sosial") {
+        analysis += " Untuk pilar yang butuh diasah (Sosial), asisten Guru BK merekomendasikan siswa untuk meluangkan waktu bersosialisasi aktif dalam kelompok-kelompok belajar serta melatih keasertifan verbal bersama rekan kelas lainnya secara bersahabat.";
+      } else if (growthText === "Pribadi") {
+        analysis += " Untuk peningkatan batin (Pribadi), diharapkan siswa melatih teknik olah napas rileksasi atau menulis jurnalisme batin agar emosi harian kian terpelihara positif.";
+      } else if (growthText === "Belajar") {
+        analysis += " Pada pilar bertumbuh (Belajar), siswa disarankan membagi topik tugas ulangan ke dalam target harian kecil memakai bantuan metode visualisasi mind-map kreatif.";
+      } else {
+        analysis += " Di sektor penunjang karir (Karir), disarankan siswa berbincang hangat kepada guru konseling mengenai ragam potensi jurusan sekolah lanjutan yang ideal sesuai minat bawaan siswa.";
+      }
+
+      return { strengthText, growthText, analysis };
+    }
+
+    // MULTI PAGE PDF GENERATION USING JSPDF (NO EXPOSED IMPORTS CONFLICTS)
+    function downloadReportPDF() {
+      if (!savedWinnerProfile) return;
+      const p = savedWinnerProfile;
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        let pageNumber = 1;
+        let y = 15;
+
+        const drawBorderAndFooters = () => {
+          // Inner page border
+          doc.setDrawColor(203, 213, 225); // slate-300
+          doc.setLineWidth(0.4);
+          doc.rect(8, 8, 194, 281);
+
+          // General bottom footer
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184); // slate-400
+          doc.text(`Dicetak melalui Web Aplikasi Ular Tangga BK Interaktif • Sesi Kelulusan Petualangan`, 12, 285);
+          doc.text(`Halaman ${pageNumber}`, 198, 285, { align: 'right' });
+        };
+
+        const checkBoundsAndAddPage = (requiredHeight) => {
+          if (y + requiredHeight > 275) {
+            doc.addPage();
+            pageNumber++;
+            drawBorderAndFooters();
+            y = 22;
+          }
+        };
+
+        // --- PAGE 1 ---
+        drawBorderAndFooters();
+
+        // Elegant Dark Header block
+        doc.setFillColor(30, 41, 59); // slate-800
+        doc.rect(10, 10, 190, 36, 'F');
+        
+        // Gold bottom decoration line
+        doc.setFillColor(234, 179, 8); // yellow-500
+        doc.rect(10, 46, 190, 3, 'F');
+
+        // Headers text
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text('LAPORAN PERKEMBANGAN KARAKTER SISWA', 15, 22);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(226, 232, 240); // slate-200
+        doc.text('Unit Layanan Bimbingan & Konseling (BK) • Portofolio Evaluasi Siswa Mandiri', 15, 28);
+        doc.text(`Eksplorasi Aktif: ${SYSTEMS_THEMES_DATA[currentThemeIdx].name}`, 15, 34);
+
+        // BK circular badge icon
+        doc.setFillColor(234, 179, 8);
+        doc.circle(180, 28, 8, 'F');
+        doc.setTextColor(30, 41, 59);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text('BK', 180, 32, { align: 'center' });
+
+        // User profile board summary card
+        y = 57;
+        doc.setFillColor(248, 250, 252); // slate-50
+        doc.setDrawColor(226, 232, 240); // slate-200
+        doc.setLineWidth(0.25);
+        doc.rect(10, y, 190, 34, 'FD');
+
+        doc.setTextColor(71, 85, 105);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('NAMA LENGKAP:', 15, y + 8);
+        doc.text('GENDER SISWA:', 15, y + 16);
+        doc.text('TANGGAL CETAK:', 15, y + 24);
+
+        doc.setTextColor(15, 23, 42); // slate-900
+        doc.text(p.name.toUpperCase(), 45, y + 8);
+        
+        doc.setFont('Helvetica', 'normal');
+        const genderLabel = p.gender === 'female' ? 'perempuan (siswi)' : 'laki-laki (siswa)';
+        doc.text(genderLabel.toUpperCase(), 45, y + 16);
+        
+        const timestampStr = new Date().toLocaleString('id-ID', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        doc.text(timestampStr, 45, y + 24);
+
+        doc.setTextColor(71, 85, 105);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('METODE AKTIVITAS:', 115, y + 8);
+        doc.text('TEMA EXPEDISI:', 115, y + 16);
+        doc.text('HASIL AKHIR:', 115, y + 24);
+
+        doc.setTextColor(15, 23, 42);
+        const modeLabel = playMode === 'online' ? 'MULTIPLAYER ONLINE' : 'MODE MANDIRI';
+        doc.text(modeLabel, 150, y + 8);
+        doc.text(SYSTEMS_THEMES_DATA[currentThemeIdx].name.toUpperCase(), 150, y + 16);
+        doc.setTextColor(21, 128, 61); // emerald-700
+        doc.text('LULUS SELESAI PETAK 25', 150, y + 24);
+
+        // Scores metrics Section
+        y += 44;
+        checkBoundsAndAddPage(30);
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('I. METRIK SKOR PILAR UTAMA KARAKTER', 10, y);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.4);
+        doc.line(10, y + 2, 200, y + 2);
+
+        y += 8;
+        const scoreCards = [
+          { label: 'PRIBADI', val: p.score.Pribadi || 0, rgb: [13, 148, 136], sub: 'Kesadaran diri' },
+          { label: 'SOSIAL', val: p.score.Sosial || 0, rgb: [79, 70, 229], sub: 'Empati kelas' },
+          { label: 'BELAJAR', val: p.score.Belajar || 0, rgb: [217, 119, 6], sub: 'Kegigihan belajar' },
+          { label: 'KARIR', val: p.score.Karir || 0, rgb: [219, 39, 119], sub: 'Rencana masa dpan' }
+        ];
+
+        const cardWidth = 44;
+        const cardGap = 4.5;
+
+        scoreCards.forEach((c, idx) => {
+          const cardX = 10 + idx * (cardWidth + cardGap);
+          doc.setFillColor(248, 250, 252);
+          doc.setDrawColor(226, 232, 240);
+          doc.rect(cardX, y, cardWidth, 26, 'FD');
+
+          // Top thick colored ribbon decoration
+          doc.setFillColor(c.rgb[0], c.rgb[1], c.rgb[2]);
+          doc.rect(cardX, y, cardWidth, 1.5, 'F');
+
+          // Card contents
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(71, 85, 105);
+          doc.text(c.label, cardX + (cardWidth / 2), y + 6, { align: 'center' });
+
+          doc.setFontSize(14);
+          doc.setTextColor(15, 23, 42);
+          doc.text(`${c.val} Poin`, cardX + (cardWidth / 2), y + 15, { align: 'center' });
+
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(148, 163, 184);
+          doc.text(c.sub, cardX + (cardWidth / 2), y + 21, { align: 'center', maxWidth: cardWidth - 4 });
+        });
+
+        // Counselor advisory analytical section
+        const recData = getCounselingRecommendationText(p.score);
+        y += 34;
+        checkBoundsAndAddPage(50);
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('II. ANALISIS DAN REKOMENDASI GURU BK AI', 10, y);
+        doc.line(10, y + 2, 200, y + 2);
+
+        y += 8;
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(10, y, 190, 42, 'FD');
+
+        // Strong badge pill
+        doc.setFillColor(209, 250, 229); // emerald-50
+        doc.rect(15, y + 4, 80, 6, 'F');
+        doc.setTextColor(6, 95, 70);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.text(`KEKUATAN UTAMA: Pilar ${recData.strengthText}`, 18, y + 8.5);
+
+        // Weak/Growth badge pill
+        doc.setFillColor(254, 243, 199); // amber-50
+        doc.rect(105, y + 4, 85, 6, 'F');
+        doc.setTextColor(146, 64, 14);
+        doc.text(`ASPEK PENINGKATAN: Pilar ${recData.growthText}`, 108, y + 8.5);
+
+        // Advice narrative paragraphs rendering
+        doc.setTextColor(51, 65, 85);
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const splitRecText = doc.splitTextToSize(recData.analysis, 180);
+        doc.text(splitRecText, 15, y + 16);
+
+        // Section 3: Student Portfolio Reflection logs
+        const winnerReflections = allReflections.filter(r => r.playerName === p.name);
+        if (winnerReflections.length > 0) {
+          y += 50;
+          checkBoundsAndAddPage(30);
+          doc.setTextColor(15, 23, 42);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.text('III. JURNAL REFLEKSI DAN REVIEWS KONSELOR', 10, y);
+          doc.line(10, y + 2, 200, y + 2);
+          y += 8;
+
+          winnerReflections.forEach((ref, index) => {
+            const qLines = doc.splitTextToSize(`${index + 1}. Pertanyaan: ${ref.questionText}`, 180);
+            const answerLines = doc.splitTextToSize(`Tanggapan Siswa: "${ref.userAnswer}"`, 175);
+            const feedbackLines = doc.splitTextToSize(`Afirmasi Pembimbing BK: "${ref.aiCounselorFeedback}"`, 172);
+
+            const itemHeight = (qLines.length * 4) + (answerLines.length * 4) + (feedbackLines.length * 4) + 12;
+
+            checkBoundsAndAddPage(itemHeight + 5);
+
+            // Light grid block frame
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(241, 245, 249);
+            doc.rect(10, y, 190, itemHeight, 'F');
+
+            // Category category badge in top right Corner of block
+            doc.setFillColor(241, 245, 249);
+            doc.rect(160, y + 1.5, 35, 5, 'F');
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(ref.category.toUpperCase(), 177.5, y + 5, { align: 'center' });
+
+            // Text outputs
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(qLines, 12, y + 5);
+            
+            let currentLocalY = y + 5 + (qLines.length * 4);
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(51, 65, 85);
+            doc.text(answerLines, 16, currentLocalY);
+            
+            currentLocalY += (answerLines.length * 4) + 1.5;
+
+            // Counselor feedback inner block
+            doc.setFillColor(248, 250, 252);
+            doc.rect(15, currentLocalY - 1, 180, (feedbackLines.length * 4) + 5, 'F');
+            
+            doc.setFont('Helvetica', 'bold');
+            doc.setTextColor(79, 70, 229); // Indigo text
+            doc.setFontSize(7.5);
+            doc.text('ULASAN KONSELOR BK AI:', 18, currentLocalY + 3);
+
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(71, 85, 105);
+            doc.setFontSize(8);
+            doc.text(feedbackLines, 18, currentLocalY + 7);
+
+            // Divider line
+            doc.setDrawColor(241, 245, 249);
+            doc.line(10, y + itemHeight, 200, y + itemHeight);
+
+            y += itemHeight + 3;
+          });
+        }
+
+        // Parent School verification sign blocks
+        checkBoundsAndAddPage(40);
+        y += 4;
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.35);
+        doc.line(10, y, 200, y);
+
+        y += 8;
+        doc.setTextColor(100, 116, 139);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.text('Mengetahui dan Menyetujui Portofolio Bimbingan,', 10, y);
+
+        y += 6;
+        const sigBlockY = y;
+        doc.setTextColor(30, 41, 59);
+        doc.text('GURU PEMBIMBING / GURU BK', 15, sigBlockY);
+        doc.text('ORANG TUA / WALI SISWA', 125, sigBlockY);
+
+        doc.setDrawColor(148, 163, 184); // slate-400
+        doc.line(15, sigBlockY + 16, 75, sigBlockY + 16);
+        doc.line(125, sigBlockY + 16, 185, sigBlockY + 16);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.setFontSize(7.5);
+        doc.text('(Tanda Tangan & Nama Terang)', 15, sigBlockY + 20);
+        doc.text('(Tanda Tangan & Nama Terang)', 125, sigBlockY + 20);
+
+        // Download save triggers
+        const pdfFilename = `Laporan_BK_Karakter_${p.name.replace(/\s+/g, '_')}.pdf`;
+        doc.save(pdfFilename);
+        playSound('success');
+      } catch (err) {
+        console.error('Gagal membundel jsPDF dokumen:', err);
+        alert('Maaf, susunan dokumen PDF gagal dirakit karena bentrokan dependensi browser Anda.');
+      }
+    }
+
+    // GENERAL WORKSPACE INITIALIZERS
+    window.onload = () => {
+      populateThemeSelectors();
+      renderLocalPlayersConfig();
+      renderOnlineProfileSwatches();
+      lucide.createIcons();
+    };
+  </script>
+
+</body>
+</html>
