@@ -156,6 +156,44 @@
           <p class="text-xs text-slate-500 font-bold">Bermain bersama murid-murid lain di kelas menggunakan koneksi server real-time.</p>
         </div>
 
+        <!-- Server Connection Settings Accordion -->
+        <div class="bg-indigo-950/5 border border-indigo-900/10 rounded-2xl p-4 space-y-3">
+          <button onclick="toggleServerSettings()" class="w-full flex items-center justify-between text-left text-xs font-black uppercase text-indigo-950 tracking-wider">
+            <span>⚙️ Pengaturan Server & Koneksi</span>
+            <span id="server-settings-arrow">▼</span>
+          </button>
+          
+          <div id="server-settings-content" class="hidden space-y-3 pt-2 border-t border-slate-200">
+            <div>
+              <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Pilih Domain WebSocket</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="setServerType('dev')" id="btn-server-dev" class="py-2 px-3 rounded-lg border text-[10px] font-extrabold uppercase text-center cursor-pointer">
+                  Dev Server (Uji Coba)
+                </button>
+                <button type="button" onclick="setServerType('pre')" id="btn-server-pre" class="py-2 px-3 rounded-lg border text-[10px] font-extrabold uppercase text-center cursor-pointer">
+                  Shared Server (Publik)
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Custom WebSocket URL</label>
+              <div class="flex gap-2">
+                <input type="text" id="custom-ws-url-input" class="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800" placeholder="wss://...">
+                <button type="button" onclick="applyCustomWsUrl()" class="px-4 py-2 bg-indigo-900 text-white font-bold text-xs rounded-xl hover:bg-slate-900 cursor-pointer uppercase">
+                  Simpan
+                </button>
+              </div>
+              <p class="text-[9px] text-slate-400 font-semibold leading-relaxed mt-1">
+                Ganti URL di atas jika Anda ingin menghubungkan game ke server tertentu (misal saat bermain di beda HP dengan file unduhan).
+              </p>
+            </div>
+            <div class="p-2.5 bg-slate-100 rounded-lg text-[9px] font-semibold text-slate-600 space-y-1">
+              <div><strong>Alamat Aktif:</strong> <span id="active-ws-url-display" class="font-mono text-[10px] select-all">wss://...</span></div>
+              <div><strong>Status:</strong> <span id="active-ws-status-display" class="font-bold">Memeriksa...</span></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Personal Configuration fields -->
         <div class="bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl space-y-4">
           <h3 class="font-bold text-xs text-indigo-950 uppercase tracking-widest">Identitas Bermain Anda:</h3>
@@ -839,6 +877,7 @@
     let myOnlineGender = 'male';
     let onlineRoom = null;
     let isIncomingSync = false;
+    let configuredWsUrl = localStorage.getItem('bk_custom_ws_url') || '';
 
     // LOCAL THEME POPULATOR
     function populateThemeSelectors() {
@@ -1071,14 +1110,17 @@
       badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Menyambung...`;
 
       let wsUrl = '';
-      const isLocalHostOrRunApp = window.location.host.includes('localhost') || window.location.host.includes('run.app');
-      
-      if (isLocalHostOrRunApp) {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        wsUrl = `${wsProtocol}//${window.location.host}`;
+      if (configuredWsUrl) {
+        wsUrl = configuredWsUrl;
       } else {
-        // Fallback to the live Cloud Run backend URL for standalone pages / Github Pages
-        wsUrl = 'wss://ais-pre-m4a2mwzht7cviuapcpkjt4-963306589935.asia-southeast1.run.app';
+        const isLocalHostOrRunApp = window.location.host.includes('localhost') || window.location.host.includes('run.app');
+        if (isLocalHostOrRunApp) {
+          const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          wsUrl = `${wsProtocol}//${window.location.host}`;
+        } else {
+          // Default fallback to the active Dev Server for standalone pages / downloaded files
+          wsUrl = 'wss://ais-dev-m4a2mwzht7cviuapcpkjt4-963306589935.asia-southeast1.run.app';
+        }
       }
       
       try {
@@ -1090,6 +1132,7 @@
           badge.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/50 border border-emerald-200 text-xs font-black uppercase text-emerald-600";
           
           if (onConnectedCallback) onConnectedCallback();
+          if (document.getElementById('server-settings-content')) updateServerSettingsUI();
 
           // Heartbeat keep-alive ping
           const pingInterval = setInterval(() => {
@@ -1168,14 +1211,118 @@
           badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span> Terputus`;
           badge.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-black uppercase text-slate-400";
           if (ws && ws._pingInterval) clearInterval(ws._pingInterval);
+          if (document.getElementById('server-settings-content')) updateServerSettingsUI();
         };
 
         ws.onerror = (err) => {
           console.warn('WS Broker connectivity failed. Running with offline UI controls: ', err);
+          if (document.getElementById('server-settings-content')) updateServerSettingsUI();
         };
       } catch (err) {
         console.warn('WS Broker failure: ', err);
       }
+    }
+
+    // SERVER CONNECTION ACCORDION HANDLERS
+    function toggleServerSettings() {
+      const content = document.getElementById('server-settings-content');
+      const arrow = document.getElementById('server-settings-arrow');
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        arrow.innerText = '▲';
+        updateServerSettingsUI();
+      } else {
+        content.classList.add('hidden');
+        arrow.innerText = '▼';
+      }
+    }
+
+    function updateServerSettingsUI() {
+      let wsUrl = configuredWsUrl;
+      if (!wsUrl) {
+        const isLocalHostOrRunApp = window.location.host.includes('localhost') || window.location.host.includes('run.app');
+        if (isLocalHostOrRunApp) {
+          const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          wsUrl = `${wsProtocol}//${window.location.host}`;
+        } else {
+          wsUrl = 'wss://ais-dev-m4a2mwzht7cviuapcpkjt4-963306589935.asia-southeast1.run.app';
+        }
+      }
+
+      const inputField = document.getElementById('custom-ws-url-input');
+      const displaySpan = document.getElementById('active-ws-url-display');
+      if (inputField) inputField.value = wsUrl;
+      if (displaySpan) displaySpan.innerText = wsUrl;
+
+      // Update active connection status text in the settings box
+      const statusDisp = document.getElementById('active-ws-status-display');
+      if (statusDisp) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          statusDisp.innerText = 'TERHUBUNG (SIAP)';
+          statusDisp.className = 'font-bold text-emerald-600 text-xs';
+        } else if (ws && ws.readyState === WebSocket.CONNECTING) {
+          statusDisp.innerText = 'MENYAMBUNG...';
+          statusDisp.className = 'font-bold text-yellow-600 animate-pulse text-xs';
+        } else {
+          statusDisp.innerText = 'TERPUTUS / BELUM TERHUBUNG';
+          statusDisp.className = 'font-bold text-rose-600 text-xs';
+        }
+      }
+
+      // Highlight selected preset buttons
+      const btnDev = document.getElementById('btn-server-dev');
+      const btnPre = document.getElementById('btn-server-pre');
+      
+      if (btnDev && btnPre) {
+        const isDev = wsUrl.includes('ais-dev');
+        const isPre = wsUrl.includes('ais-pre');
+
+        if (isDev) {
+          btnDev.className = "py-2 px-3 rounded-lg border-2 border-indigo-600 bg-indigo-50 text-[10px] font-black uppercase text-indigo-950 cursor-pointer";
+          btnPre.className = "py-2 px-3 rounded-lg border border-slate-200 text-[10px] font-bold uppercase text-slate-500 hover:text-slate-950 bg-white cursor-pointer";
+        } else if (isPre) {
+          btnDev.className = "py-2 px-3 rounded-lg border border-slate-200 text-[10px] font-bold uppercase text-slate-500 hover:text-slate-950 bg-white cursor-pointer";
+          btnPre.className = "py-2 px-3 rounded-lg border-2 border-indigo-600 bg-indigo-50 text-[10px] font-black uppercase text-indigo-950 cursor-pointer";
+        } else {
+          btnDev.className = "py-2 px-3 rounded-lg border border-slate-200 text-[10px] font-bold uppercase text-slate-500 hover:text-slate-950 bg-white cursor-pointer";
+          btnPre.className = "py-2 px-3 rounded-lg border border-slate-200 text-[10px] font-bold uppercase text-slate-500 hover:text-slate-950 bg-white cursor-pointer";
+        }
+      }
+    }
+
+    function setServerType(type) {
+      if (type === 'dev') {
+        configuredWsUrl = 'wss://ais-dev-m4a2mwzht7cviuapcpkjt4-963306589935.asia-southeast1.run.app';
+      } else {
+        configuredWsUrl = 'wss://ais-pre-m4a2mwzht7cviuapcpkjt4-963306589935.asia-southeast1.run.app';
+      }
+      localStorage.setItem('bk_custom_ws_url', configuredWsUrl);
+      
+      // Close current socket so it reconnects to the new URL
+      if (ws) {
+        ws.close();
+      }
+      connectWebSocket(() => {
+        updateServerSettingsUI();
+      });
+    }
+
+    function applyCustomWsUrl() {
+      const val = document.getElementById('custom-ws-url-input').value.trim();
+      if (!val || (!val.startsWith('ws://') && !val.startsWith('wss://'))) {
+        alert('Tolong masukkan URL WebSocket yang valid dimulai dengan ws:// atau wss:// 🌐');
+        return;
+      }
+      configuredWsUrl = val;
+      localStorage.setItem('bk_custom_ws_url', configuredWsUrl);
+      
+      if (ws) {
+        ws.close();
+      }
+      connectWebSocket(() => {
+        updateServerSettingsUI();
+        alert('Berhasil terhubung ke WebSocket Server baru! 🎉');
+      });
     }
 
     // STATE TRANSFORMATION SENDER ON MULTIPLAYER GAME ACTIONS
@@ -1304,11 +1451,38 @@
       if (players.length === 0) return;
       isPlaying = true;
       activePlayerIdx = 0;
+      allReflections = [];
+      logs = [];
+
+      // Reset positions & scores
+      players.forEach(p => {
+        p.position = 1;
+        p.score = { Pribadi: 0, Sosial: 0, Belajar: 0, Karir: 0 };
+      });
 
       // Broadcast room starts to websocket broker
       onlineRoom.isPlaying = true;
+      onlineRoom.players = players;
+      onlineRoom.activePlayerIdx = 0;
+      onlineRoom.winner = null;
+      onlineRoom.allReflections = [];
+      onlineRoom.logs = logs;
+
       writeLog(`🚪 MEMULAI SESI MULTIPLAYER ONLINE: Papan bimbingan aktif!`, 'system');
+      writeLog(`Paket Materi Konseling: ${SYSTEMS_THEMES_DATA[currentThemeIdx].name} ${SYSTEMS_THEMES_DATA[currentThemeIdx].emoji}`, 'system');
+
       syncGameStateToServer();
+
+      // Transition screen for host
+      document.getElementById('setup-panel-online').classList.add('hidden');
+      document.getElementById('board-panel').classList.remove('hidden');
+      document.getElementById('dice-sidebar').classList.remove('hidden');
+      document.getElementById('btn-restart-game').classList.remove('hidden');
+      
+      drawBoardUI();
+      updateScoresContainerUI();
+      updateTurnHeaderUI();
+      playSound('success');
     }
 
     // LOCAL START GAME
